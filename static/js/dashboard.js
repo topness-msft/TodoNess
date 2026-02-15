@@ -1,0 +1,1302 @@
+/* TodoNess Dashboard — vanilla JS */
+
+// ── State ──────────────────────────────────────────────────────────────
+var tasks = [];
+var selectedTaskId = null;
+var ws = null;
+var reconnectTimer = null;
+var openDropdownId = null;
+var searchQuery = '';
+var lastSyncTime = null;
+
+// ── Init ───────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', init);
+
+function init() {
+    fetchTasks();
+    connectWebSocket();
+    setupInputBar();
+    startParsePoller();
+    fetchSyncStatus();
+
+    // Close people dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.person-pill-wrapper')) {
+            closeAllDropdowns();
+        }
+    });
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────
+function connectWebSocket() {
+    var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
+    setConnectionStatus('connecting');
+
+    ws.onopen = function() {
+        setConnectionStatus('connected');
+    };
+
+    ws.onmessage = function(event) {
+        var msg = JSON.parse(event.data);
+        handleWsMessage(msg);
+    };
+
+    ws.onclose = function() {
+        ws = null;
+        setConnectionStatus('disconnected');
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connectWebSocket, 3000);
+    };
+
+    ws.onerror = function() {
+        if (ws) ws.close();
+    };
+}
+
+function setConnectionStatus(state) {
+    var el = document.getElementById('connection-status');
+    if (!el) return;
+    el.className = 'connection-indicator ' + state;
+    var label = el.querySelector('.connection-label');
+    if (label) {
+        var labels = { connected: 'Live', connecting: 'Connecting', disconnected: 'Offline' };
+        label.textContent = labels[state] || state;
+    }
+}
+
+function handleWsMessage(msg) {
+    if (msg.type === 'task_created') {
+        var existing = tasks.find(function(t) { return t.id === msg.task.id; });
+        if (!existing) {
+            tasks.push(msg.task);
+        } else {
+            Object.assign(existing, msg.task);
+        }
+        renderTaskList();
+    } else if (msg.type === 'task_updated') {
+        var task = tasks.find(function(t) { return t.id === msg.task.id; });
+        if (task) {
+            Object.assign(task, msg.task);
+        } else {
+            tasks.push(msg.task);
+        }
+        renderTaskList();
+        if (selectedTaskId === msg.task.id) {
+            renderDetailPane(msg.task);
+        }
+    } else if (msg.type === 'task_deleted') {
+        tasks = tasks.filter(function(t) { return t.id !== msg.task_id; });
+        renderTaskList();
+        if (selectedTaskId === msg.task_id) {
+            selectedTaskId = null;
+            clearDetailPane();
+        }
+    }
+}
+
+// ── Fetch Tasks ────────────────────────────────────────────────────────
+function fetchTasks() {
+    fetch('/api/tasks')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            tasks = data.tasks || [];
+            renderTaskList();
+            if (selectedTaskId) {
+                var t = tasks.find(function(t) { return t.id === selectedTaskId; });
+                if (t) renderDetailPane(t);
+                else clearDetailPane();
+            }
+        })
+        .catch(function(err) { console.error('Failed to fetch tasks:', err); });
+}
+
+
+// ── Parse Status Poller ────────────────────────────────────────────────
+// Polls for tasks in transitional parse states (queued/parsing/unparsed)
+// since Claude writes directly to the DB, bypassing WebSocket.
+var parsePollerInterval = null;
+
+function startParsePoller() {
+    parsePollerInterval = setInterval(pollParseStatus, 3000);
+}
+
+function pollParseStatus() {
+    // Only poll if there are tasks in transitional states
+    var pending = tasks.filter(function(t) {
+        return t.parse_status === 'unparsed' || t.parse_status === 'queued' || t.parse_status === 'parsing';
+    });
+    if (!pending.length) return;
+
+    // Re-fetch all tasks and update any that changed
+    fetch('/api/tasks')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var updated = false;
+            (data.tasks || []).forEach(function(fresh) {
+                var existing = tasks.find(function(t) { return t.id === fresh.id; });
+                if (existing) {
+                    // Check if parse_status changed or other fields updated
+                    if (existing.parse_status !== fresh.parse_status ||
+                        existing.updated_at !== fresh.updated_at) {
+                        Object.assign(existing, fresh);
+                        updated = true;
+                    }
+                }
+            });
+            if (updated) {
+                renderTaskList();
+                if (selectedTaskId) {
+                    var sel = tasks.find(function(t) { return t.id === selectedTaskId; });
+                    if (sel) renderDetailPane(sel);
+                }
+            }
+        })
+        .catch(function() {}); // Silent fail on poll
+}
+
+// ── Input Bar ──────────────────────────────────────────────────────────
+function setupInputBar() {
+    var form = document.getElementById('add-task-form');
+    var input = document.getElementById('task-input');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTask();
+    });
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitTask();
+        }
+    });
+}
+
+function submitTask() {
+    var input = document.getElementById('task-input');
+    var text = input.value.trim();
+    if (!text) return;
+
+    fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw_input: text })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        input.value = '';
+        if (data.task) {
+            var existing = tasks.find(function(t) { return t.id === data.task.id; });
+            if (!existing) {
+                tasks.push(data.task);
+                renderTaskList();
+            }
+        }
+    })
+    .catch(function(err) { console.error('Failed to create task:', err); });
+}
+
+// ── Search Filter ─────────────────────────────────────────────────────
+function applySearchFilter() {
+    var input = document.getElementById('search-input');
+    searchQuery = (input ? input.value : '').trim().toLowerCase();
+    renderTaskList();
+}
+
+function taskMatchesSearch(task) {
+    if (!searchQuery) return true;
+    var fields = [
+        task.title,
+        task.description,
+        task.coaching_text,
+        task.key_people,
+        task.related_meeting,
+        task.raw_input,
+        task.user_notes,
+        task.action_type,
+        task.skill_output
+    ];
+    for (var i = 0; i < fields.length; i++) {
+        if (fields[i] && fields[i].toLowerCase().indexOf(searchQuery) !== -1) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// ── Render Task List ───────────────────────────────────────────────────
+function renderTaskList() {
+    var inProgress = [];
+    var active = [];
+    var suggested = [];
+    var completed = [];
+    var dismissed = [];
+    var deleted = [];
+
+    tasks.forEach(function(t) {
+        if (!taskMatchesSearch(t)) return;
+        if (t.status === 'in_progress') {
+            inProgress.push(t);
+        } else if (t.status === 'active') {
+            active.push(t);
+        } else if (t.status === 'suggested') {
+            suggested.push(t);
+        } else if (t.status === 'completed') {
+            completed.push(t);
+        } else if (t.status === 'dismissed') {
+            dismissed.push(t);
+        } else if (t.status === 'deleted') {
+            deleted.push(t);
+        }
+    });
+
+    renderSection('in_progress', inProgress);
+    renderSection('active', active);
+    renderSection('suggested', suggested);
+    renderSection('completed', completed);
+    renderSection('dismissed', dismissed);
+    renderSection('deleted', deleted);
+}
+
+function renderSection(sectionId, sectionTasks) {
+    var body = document.getElementById('body-' + sectionId);
+    var count = document.getElementById('count-' + sectionId);
+    count.textContent = sectionTasks.length;
+
+    var html = '';
+    sectionTasks.forEach(function(task) {
+        var selected = task.id === selectedTaskId ? ' selected' : '';
+        var dueHtml = '';
+        if (task.due_date) {
+            var overdue = new Date(task.due_date) < new Date() ? ' overdue' : '';
+            dueHtml = '<span class="task-due' + overdue + '">' + formatDate(task.due_date) + '</span>';
+        }
+        var parseHtml = parseStatusIcon(task.parse_status);
+        var enrichedHtml = task.skill_output ? '<span class="enriched-icon" title="Skill enriched">\u26A1</span>' : '';
+
+        // Build preview line: description, coaching, or key people
+        var preview = task.description || task.coaching_text || '';
+        if (!preview && task.key_people) {
+            var names = parsePeopleNames(task.key_people);
+            if (names.length) preview = names.join(', ');
+        }
+        // Action badge for non-general types
+        var actionBadgeHtml = '';
+        if (task.action_type && task.action_type !== 'general') {
+            actionBadgeHtml = '<span class="action-badge">' + actionTypeIcon(task.action_type) + ' ' + escapeHtml(actionTypeLabel(task.action_type)) + '</span>';
+        }
+
+        var previewHtml = preview
+            ? '<div class="task-row-preview">' + escapeHtml(truncate(preview, 80)) + actionBadgeHtml + '</div>'
+            : (actionBadgeHtml ? '<div class="task-row-preview">' + actionBadgeHtml + '</div>' : '');
+
+        html += '<div class="task-row' + selected + '" data-id="' + task.id + '" onclick="selectTask(' + task.id + ')">'
+            + priorityDot(task.priority)
+            + '<div class="task-row-content">'
+            + '<div class="task-row-top">'
+            + '<span class="task-title">' + escapeHtml(task.title) + '</span>'
+            + dueHtml
+            + '</div>'
+            + previewHtml
+            + '</div>'
+            + enrichedHtml
+            + parseHtml
+            + '<button class="task-row-delete" onclick="event.stopPropagation(); deleteTask(' + task.id + ')" title="Delete">&#215;</button>'
+            + '</div>';
+    });
+
+    body.innerHTML = html;
+}
+
+// ── Select Task ────────────────────────────────────────────────────────
+function selectTask(taskId) {
+    selectedTaskId = taskId;
+
+    var rows = document.querySelectorAll('.task-row');
+    rows.forEach(function(row) {
+        if (parseInt(row.getAttribute('data-id')) === taskId) {
+            row.classList.add('selected');
+        } else {
+            row.classList.remove('selected');
+        }
+    });
+
+    fetch('/api/tasks/' + taskId)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.task) {
+                renderDetailPane(data.task);
+            }
+        })
+        .catch(function(err) { console.error('Failed to fetch task detail:', err); });
+}
+
+// ── Render Detail Pane ─────────────────────────────────────────────────
+function renderDetailPane(task) {
+    var pane = document.getElementById('detail-pane');
+
+    var sourceIcon = sourceTypeIcon(task.source_type);
+    var statusClass = (task.status || '').replace(/\s/g, '_');
+
+    // Header card with inline actions
+    var html = '<div class="detail-card">'
+        + '<div class="detail-header-row">'
+        + '<h2>' + escapeHtml(task.title) + '</h2>'
+        + getHeaderActions(task)
+        + '</div>'
+        + '<div class="detail-meta">'
+        + '<span class="meta-item"><span class="status-badge ' + statusClass + '">' + escapeHtml(task.status) + '</span></span>'
+        + '<span class="meta-item">' + prioritySelector(task) + '</span>'
+        + '<span class="meta-item">' + dueDateField(task) + '</span>'
+        + '<span class="meta-item">' + actionTypeSelector(task) + '</span>'
+        + '<span class="meta-item">' + parseStatusBadge(task.parse_status, task.id) + '</span>'
+        + '<span class="meta-item" style="margin-left:auto">' + sourceMetaLink(task) + '</span>'
+        + '</div>';
+
+    // Description (editable)
+    if (task.description) {
+        html += '<div style="margin-top:10px"><div class="detail-label">Description'
+            + '<button class="btn-edit-inline" onclick="toggleDescriptionEdit(' + task.id + ')" title="Edit description">&#9998;</button>'
+            + '</div>'
+            + '<div id="desc-display-' + task.id + '" class="detail-description">' + renderRichText(task.description, task.key_people) + '</div>'
+            + '<textarea id="desc-edit-' + task.id + '" class="description-edit-textarea" style="display:none" '
+            + 'onblur="saveDescription(' + task.id + ')">' + escapeHtml(task.description) + '</textarea>'
+            + '</div>';
+    } else {
+        html += '<div style="margin-top:10px"><div class="detail-label">Description'
+            + '<button class="btn-edit-inline" onclick="toggleDescriptionEdit(' + task.id + ')" title="Add description">&#9998;</button>'
+            + '</div>'
+            + '<div id="desc-display-' + task.id + '" class="detail-description" style="color:#9e9e9e">No description</div>'
+            + '<textarea id="desc-edit-' + task.id + '" class="description-edit-textarea" style="display:none" '
+            + 'onblur="saveDescription(' + task.id + ')" placeholder="Add a description..."></textarea>'
+            + '</div>';
+    }
+
+    html += '</div>';
+
+    // Key People (pills)
+    if (task.key_people) {
+        html += '<div class="detail-card">'
+            + '<div class="detail-label">Key People</div>'
+            + renderPeoplePills(task.key_people, task.id)
+            + '</div>';
+    }
+
+    // User Notes
+    html += '<div class="detail-card">'
+        + '<div class="detail-label">Notes</div>'
+        + '<textarea class="notes-textarea" id="notes-textarea" '
+        + 'onblur="saveNotes(' + task.id + ')" placeholder="Add your notes...">'
+        + escapeHtml(task.user_notes || '')
+        + '</textarea>'
+        + '</div>';
+
+    // Skill Output (between coaching and source)
+    if (task.skill_output) {
+        html += '<div class="skill-output-card">'
+            + '<div class="skill-output-header">'
+            + '<div class="skill-output-title">\u26A1 Skill Output</div>'
+            + '</div>'
+            + '<div class="skill-output-text">' + renderRichText(task.skill_output, task.key_people) + '</div>';
+        if (task.suggestion_refreshed_at) {
+            html += '<div class="skill-output-updated">Updated ' + timeAgo(task.suggestion_refreshed_at) + '</div>';
+        }
+        html += '</div>';
+    }
+
+    // AI Coaching
+    if (task.coaching_text) {
+        var isStale = isCoachingStale(task);
+        html += '<div class="coaching-card' + (isStale ? ' coaching-stale' : '') + '">'
+            + '<div class="coaching-header">'
+            + '<div class="coaching-title">AI Coaching'
+            + '<button class="btn-edit-inline" onclick="toggleCoachingEdit(' + task.id + ')" title="Edit coaching">&#9998;</button>'
+            + '</div>';
+        if (isStale) {
+            html += '<span class="coaching-stale-badge" title="Task has changed since last AI refresh">'
+                + '&#9888; May be outdated'
+                + '</span>';
+        }
+        html += '</div>'
+            + '<div id="coaching-display-' + task.id + '" class="coaching-text">' + renderRichText(task.coaching_text, task.key_people) + '</div>'
+            + '<textarea id="coaching-edit-' + task.id + '" class="notes-textarea" style="display:none" '
+            + 'onblur="saveCoaching(' + task.id + ')">' + escapeHtml(task.coaching_text) + '</textarea>';
+        if (task.suggestion_refreshed_at) {
+            html += '<div class="coaching-updated">Updated ' + timeAgo(task.suggestion_refreshed_at) + '</div>';
+        }
+        html += '</div>';
+    } else if (task.parse_status === 'parsed') {
+        // No coaching yet — suggest refreshing
+        html += '<div class="coaching-card coaching-empty">'
+            + '<div class="coaching-title">AI Coaching</div>'
+            + '<div class="coaching-text" style="color:#9e9e9e">No coaching yet. Click Refresh to get AI suggestions.</div>'
+            + '</div>';
+    }
+
+    // Source snippet
+    if (task.source_snippet) {
+        html += '<div class="detail-card">'
+            + '<div class="detail-label">Source</div>'
+            + '<div class="detail-description">' + escapeHtml(task.source_snippet) + '</div>';
+        if (task.source_url) {
+            html += '<div style="margin-top:6px"><a href="' + escapeHtml(task.source_url) + '" target="_blank" style="color:#0f6cbd;font-size:12px">Open source</a></div>';
+        }
+        html += '</div>';
+    }
+
+    // Footer actions — contextual, prominent primary action
+    html += '<div class="detail-actions-bar">'
+        + getActionButtons(task)
+        + '<span class="actions-spacer"></span>'
+        + '<button class="btn btn-refresh" onclick="refreshTask(' + task.id + ')" title="Re-parse with Claude + WorkIQ">&#8635; Refresh</button>'
+        + '</div>';
+
+    pane.innerHTML = html;
+}
+
+function clearDetailPane() {
+    selectedTaskId = null;
+    var pane = document.getElementById('detail-pane');
+    pane.innerHTML = '<div class="empty-state">'
+        + '<div class="empty-state-icon">&#128203;</div>'
+        + '<div>Select a task to view details</div>'
+        + '</div>';
+}
+
+// ── People Pills ───────────────────────────────────────────────────────
+function parsePeople(keyPeople) {
+    if (!keyPeople) return [];
+    // Try JSON format first
+    try {
+        var parsed = JSON.parse(keyPeople);
+        if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+    // Fallback: comma-separated plain text
+    return keyPeople.split(',').map(function(name) {
+        return { name: name.trim(), alternatives: [] };
+    }).filter(function(p) { return p.name; });
+}
+
+function parsePeopleNames(keyPeople) {
+    return parsePeople(keyPeople).map(function(p) { return p.name; });
+}
+
+function getInitials(name) {
+    if (!name) return '?';
+    var parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+}
+
+function renderPeoplePills(keyPeople, taskId) {
+    var people = parsePeople(keyPeople);
+    if (!people.length) return '<div class="detail-value">' + escapeHtml(keyPeople) + '</div>';
+
+    var html = '<div class="people-list">';
+    people.forEach(function(person, idx) {
+        var hasAlts = person.alternatives && person.alternatives.length > 0;
+        var pillId = 'pill-' + taskId + '-' + idx;
+
+        html += '<div class="person-pill-wrapper" id="wrapper-' + pillId + '">';
+
+        // Pill
+        html += '<div class="person-pill' + (hasAlts ? ' has-alternatives' : '') + '" '
+            + 'onclick="event.stopPropagation(); togglePeopleDropdown(\'' + pillId + '\')">'
+            + '<span class="person-pill-avatar">' + getInitials(person.name) + '</span>'
+            + '<span>' + escapeHtml(person.name) + '</span>';
+        if (person.role) {
+            html += ' <span class="person-role">' + escapeHtml(person.role) + '</span>';
+        }
+        html += '</div>';
+
+        // Alternatives dropdown
+        if (hasAlts) {
+            html += '<div class="alternatives-dropdown" id="dropdown-' + pillId + '">';
+            html += '<div class="alternatives-header">Did you mean?</div>';
+
+            // Current selection (highlighted)
+            html += '<div class="alternative-item selected" '
+                + 'onclick="event.stopPropagation(); selectPerson(' + taskId + ', ' + idx + ', -1)">'
+                + '<div class="alt-avatar">' + getInitials(person.name) + '</div>'
+                + '<div class="alt-info">'
+                + '<div class="alt-name">' + escapeHtml(person.name) + '</div>'
+                + '<div class="alt-detail">' + escapeHtml([person.email, person.role].filter(Boolean).join(' \u00b7 ')) + '</div>'
+                + '</div></div>';
+
+            person.alternatives.forEach(function(alt, altIdx) {
+                html += '<div class="alternative-item" '
+                    + 'onclick="event.stopPropagation(); selectPerson(' + taskId + ', ' + idx + ', ' + altIdx + ')">'
+                    + '<div class="alt-avatar">' + getInitials(alt.name) + '</div>'
+                    + '<div class="alt-info">'
+                    + '<div class="alt-name">' + escapeHtml(alt.name) + '</div>'
+                    + '<div class="alt-detail">' + escapeHtml([alt.email, alt.role].filter(Boolean).join(' \u00b7 ')) + '</div>'
+                    + '</div></div>';
+            });
+
+            html += '</div>';
+        }
+
+        html += '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function togglePeopleDropdown(pillId) {
+    var dropdown = document.getElementById('dropdown-' + pillId);
+    if (!dropdown) return;
+
+    var isOpen = dropdown.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dropdown.classList.add('open');
+        openDropdownId = pillId;
+    }
+}
+
+function closeAllDropdowns() {
+    var dropdowns = document.querySelectorAll('.alternatives-dropdown.open');
+    dropdowns.forEach(function(d) { d.classList.remove('open'); });
+    openDropdownId = null;
+}
+
+function selectPerson(taskId, personIdx, altIdx) {
+    // Swap the selected alternative into the primary position
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (!task || !task.key_people) return;
+
+    var people = parsePeople(task.key_people);
+    var person = people[personIdx];
+    if (!person || altIdx < 0) {
+        closeAllDropdowns();
+        return; // Already selected
+    }
+
+    var alt = person.alternatives[altIdx];
+    if (!alt) return;
+
+    var oldName = person.name;
+    var newName = alt.name;
+
+    // Swap: move current to alternatives, promote the selected alt
+    var oldPrimary = { name: person.name, email: person.email, role: person.role };
+    var newAlternatives = person.alternatives.filter(function(_, i) { return i !== altIdx; });
+    newAlternatives.unshift(oldPrimary);
+
+    people[personIdx] = {
+        name: alt.name,
+        email: alt.email,
+        role: alt.role,
+        alternatives: newAlternatives
+    };
+
+    var newKeyPeople = JSON.stringify(people);
+
+    // Replace old name with new name in text fields
+    var updates = { key_people: newKeyPeople };
+    if (task.title) {
+        updates.title = replacePersonName(task.title, oldName, newName);
+    }
+    if (task.description) {
+        updates.description = replacePersonName(task.description, oldName, newName);
+    }
+    if (task.coaching_text) {
+        updates.coaching_text = replacePersonName(task.coaching_text, oldName, newName);
+    }
+    if (task.related_meeting) {
+        updates.related_meeting = replacePersonName(task.related_meeting, oldName, newName);
+    }
+
+    // Save all changes to server
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderDetailPane(data.task);
+            renderTaskList();
+            // Auto-queue refresh so Claude re-enriches with the correct person's context
+            refreshTask(data.task.id);
+        }
+    })
+    .catch(function(err) { console.error('Failed to update person:', err); });
+
+    closeAllDropdowns();
+}
+
+function replacePersonName(text, oldName, newName) {
+    if (!text || !oldName || !newName) return text;
+    // Replace full name
+    var result = text.split(oldName).join(newName);
+    // Also replace first name only if it appears as a standalone word
+    var oldFirst = oldName.split(' ')[0];
+    var newFirst = newName.split(' ')[0];
+    if (oldFirst !== oldName && oldFirst.length > 2) {
+        // Use word boundary: replace "Pratap" but not "Pratap" inside "PratapLadhani"
+        var re = new RegExp('\\b' + escapeRegex(oldFirst) + '\\b', 'g');
+        result = result.replace(re, newFirst);
+    }
+    return result;
+}
+
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isCoachingStale(task) {
+    // While a refresh is in progress, don't show stale — the parse status
+    // indicator already tells the user a refresh is happening
+    if (task.parse_status !== 'parsed') return false;
+    if (!task.suggestion_refreshed_at) return false;
+    // Stale only when content was manually changed after last coaching refresh
+    if (task.updated_at && task.updated_at > task.suggestion_refreshed_at) return true;
+    return false;
+}
+
+// ── Header Actions (top-right of detail card) ─────────────────────────
+function getHeaderActions(task) {
+    if (task.status === 'deleted') {
+        return '<div class="detail-header-actions">'
+            + '<button class="btn-icon btn-icon-danger" onclick="permanentDeleteTask(' + task.id + ')" title="Permanently delete">&#128465;</button>'
+            + '</div>';
+    }
+    return '<div class="detail-header-actions">'
+        + '<button class="btn-icon" onclick="deleteTask(' + task.id + ')" title="Delete task">&#128465;</button>'
+        + '</div>';
+}
+
+// ── Priority Selector ──────────────────────────────────────────────────
+function prioritySelector(task) {
+    var labels = { 1: 'P1 Urgent', 2: 'P2 High', 3: 'P3 Normal', 4: 'P4 Low', 5: 'P5 Backlog' };
+    var html = '<span class="priority-field">'
+        + '<span class="priority-dot-indicator p' + task.priority + '"></span>'
+        + '<select class="priority-select" onchange="updatePriority(' + task.id + ', this.value)">';
+    for (var i = 1; i <= 5; i++) {
+        var sel = i === task.priority ? ' selected' : '';
+        html += '<option value="' + i + '"' + sel + '>' + labels[i] + '</option>';
+    }
+    html += '</select></span>';
+    return html;
+}
+
+function updatePriority(taskId, value) {
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority: parseInt(value) })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderTaskList();
+            renderDetailPane(data.task);
+        }
+    })
+    .catch(function(err) { console.error('Failed to update priority:', err); });
+}
+
+// ── Due Date Field ─────────────────────────────────────────────────────
+function dueDateField(task) {
+    if (task.due_date) {
+        var overdue = new Date(task.due_date) < new Date() ? ' overdue' : '';
+        return '<span class="due-date-field">'
+            + 'Due: <input type="date" class="due-date-input' + overdue + '" '
+            + 'value="' + escapeHtml(task.due_date) + '" '
+            + 'onchange="updateDueDate(' + task.id + ', this.value)">'
+            + '<button class="btn-clear-date" onclick="updateDueDate(' + task.id + ', \'\')" title="Remove date">&times;</button>'
+            + '</span>';
+    }
+    return '<button class="btn-add-date" onclick="showDatePicker(' + task.id + ', this)">+ Add due date</button>';
+}
+
+function updateDueDate(taskId, value) {
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ due_date: value || null })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderTaskList();
+            renderDetailPane(data.task);
+        }
+    })
+    .catch(function(err) { console.error('Failed to update due date:', err); });
+}
+
+function showDatePicker(taskId, btn) {
+    // Replace button with a date input
+    var input = document.createElement('input');
+    input.type = 'date';
+    input.className = 'due-date-input';
+    input.onchange = function() { updateDueDate(taskId, input.value); };
+    input.onblur = function() {
+        if (!input.value) {
+            // Revert to button if no date picked
+            var task = tasks.find(function(t) { return t.id === taskId; });
+            if (task) renderDetailPane(task);
+        }
+    };
+    btn.replaceWith(input);
+    input.focus();
+    input.showPicker();
+}
+
+// ── Action Type Selector ──────────────────────────────────────────────
+function actionTypeLabel(actionType) {
+    var labels = {
+        'schedule-meeting': 'Schedule Meeting',
+        'respond-email': 'Respond to Email',
+        'review-document': 'Review Document',
+        'follow-up': 'Follow Up',
+        'prepare': 'Prepare',
+        'general': 'General'
+    };
+    return labels[actionType] || 'General';
+}
+
+function actionTypeIcon(actionType) {
+    var icons = {
+        'schedule-meeting': '\uD83D\uDCC5',
+        'respond-email': '\u2709',
+        'review-document': '\uD83D\uDCC4',
+        'follow-up': '\uD83D\uDD04',
+        'prepare': '\uD83D\uDCCB',
+        'general': '\u2699'
+    };
+    return icons[actionType] || '\u2699';
+}
+
+function actionTypeSelector(task) {
+    var types = [
+        { value: 'general', label: 'General', icon: '\u2699' },
+        { value: 'schedule-meeting', label: 'Schedule Meeting', icon: '\uD83D\uDCC5' },
+        { value: 'respond-email', label: 'Respond to Email', icon: '\u2709' },
+        { value: 'review-document', label: 'Review Document', icon: '\uD83D\uDCC4' },
+        { value: 'follow-up', label: 'Follow Up', icon: '\uD83D\uDD04' },
+        { value: 'prepare', label: 'Prepare', icon: '\uD83D\uDCCB' }
+    ];
+    var current = task.action_type || 'general';
+
+    var html = '<span class="action-type-field">'
+        + '<select class="action-type-select" onchange="updateActionType(' + task.id + ', this.value)">';
+    types.forEach(function(t) {
+        var sel = t.value === current ? ' selected' : '';
+        html += '<option value="' + t.value + '"' + sel + '>' + t.icon + ' ' + t.label + '</option>';
+    });
+    html += '</select></span>';
+    return html;
+}
+
+function updateActionType(taskId, value) {
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_type: value })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderTaskList();
+            renderDetailPane(data.task);
+            // Queue coaching re-parse since action type changed
+            refreshTask(data.task.id);
+        }
+    })
+    .catch(function(err) { console.error('Failed to update action type:', err); });
+}
+
+// ── Editable Description ──────────────────────────────────────────────
+function toggleDescriptionEdit(taskId) {
+    var display = document.getElementById('desc-display-' + taskId);
+    var edit = document.getElementById('desc-edit-' + taskId);
+    if (!display || !edit) return;
+
+    if (edit.style.display === 'none') {
+        display.style.display = 'none';
+        edit.style.display = 'block';
+        edit.focus();
+    } else {
+        edit.style.display = 'none';
+        display.style.display = 'block';
+    }
+}
+
+function saveDescription(taskId) {
+    var edit = document.getElementById('desc-edit-' + taskId);
+    if (!edit) return;
+
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    var newDesc = edit.value;
+    var oldDesc = task ? (task.description || '') : '';
+
+    // Hide edit, show display
+    var display = document.getElementById('desc-display-' + taskId);
+    if (display) display.style.display = 'block';
+    edit.style.display = 'none';
+
+    // Only save if changed
+    if (newDesc === oldDesc) return;
+
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: newDesc })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderTaskList();
+            renderDetailPane(data.task);
+        }
+    })
+    .catch(function(err) { console.error('Failed to save description:', err); });
+}
+
+// ── Editable Coaching ─────────────────────────────────────────────────
+function toggleCoachingEdit(taskId) {
+    var display = document.getElementById('coaching-display-' + taskId);
+    var edit = document.getElementById('coaching-edit-' + taskId);
+    if (!display || !edit) return;
+
+    if (edit.style.display === 'none') {
+        display.style.display = 'none';
+        edit.style.display = 'block';
+        edit.focus();
+    } else {
+        edit.style.display = 'none';
+        display.style.display = 'block';
+    }
+}
+
+function saveCoaching(taskId) {
+    var edit = document.getElementById('coaching-edit-' + taskId);
+    if (!edit) return;
+
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    var newText = edit.value;
+    var oldText = task ? (task.coaching_text || '') : '';
+
+    var display = document.getElementById('coaching-display-' + taskId);
+    if (display) display.style.display = 'block';
+    edit.style.display = 'none';
+
+    if (newText === oldText) return;
+
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coaching_text: newText })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderDetailPane(data.task);
+        }
+    })
+    .catch(function(err) { console.error('Failed to save coaching:', err); });
+}
+
+// ── Action Buttons (bottom bar — clear primary + secondary actions) ───
+function getActionButtons(task) {
+    var html = '';
+
+    if (task.status === 'suggested') {
+        // Primary: accept the suggestion. Secondary: dismiss it.
+        html += '<button class="btn btn-primary" onclick="doAction(' + task.id + ',\'promote\')">Accept Task</button>';
+        html += '<button class="btn" onclick="doAction(' + task.id + ',\'dismiss\')">Dismiss</button>';
+    } else if (task.status === 'active') {
+        // Primary: start working. Secondary: mark done (skip in_progress). Tertiary: dismiss.
+        html += '<button class="btn btn-primary" onclick="doAction(' + task.id + ',\'start\')">Start Working</button>';
+        html += '<button class="btn" onclick="doAction(' + task.id + ',\'complete\')">Mark Complete</button>';
+        html += '<button class="btn btn-subtle" onclick="doAction(' + task.id + ',\'dismiss\')">Dismiss</button>';
+    } else if (task.status === 'in_progress') {
+        // Primary: done. Secondary: pause (back to active).
+        html += '<button class="btn btn-primary" onclick="doAction(' + task.id + ',\'complete\')">Mark Complete</button>';
+        html += '<button class="btn" onclick="doAction(' + task.id + ',\'transition\',\'active\')">Pause</button>';
+    } else if (task.status === 'completed') {
+        // Only action: reopen
+        html += '<button class="btn" onclick="doAction(' + task.id + ',\'transition\',\'active\')">Reopen</button>';
+    } else if (task.status === 'dismissed') {
+        // Restore
+        html += '<button class="btn" onclick="doAction(' + task.id + ',\'transition\',\'active\')">Restore</button>';
+    }
+
+    return html;
+}
+
+// ── Task Actions ───────────────────────────────────────────────────────
+function doAction(taskId, action, status) {
+    var body = { action: action };
+    if (status) body.status = status;
+
+    fetch('/api/tasks/' + taskId + '/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    })
+    .then(function(res) {
+        if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Action failed'); });
+        return res.json();
+    })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderTaskList();
+            if (selectedTaskId === data.task.id) renderDetailPane(data.task);
+        }
+    })
+    .catch(function(err) { console.error('Action failed:', err.message); });
+}
+
+function deleteTask(taskId) {
+    // For suggested tasks, dismiss instead of delete
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (task && task.status === 'suggested') {
+        doAction(taskId, 'dismiss');
+    } else {
+        // Soft delete — moves to 'deleted' status, recoverable
+        doAction(taskId, 'transition', 'deleted');
+    }
+}
+
+function refreshTask(taskId) {
+    // Reset to unparsed — the Stop hook will prompt Claude to re-enrich it
+    fetch('/api/tasks/' + taskId + '/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderTaskList();
+            renderDetailPane(data.task);
+        }
+    })
+    .catch(function(err) { console.error('Refresh failed:', err); });
+}
+
+function permanentDeleteTask(taskId) {
+    fetch('/api/tasks/' + taskId, { method: 'DELETE' })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            tasks = tasks.filter(function(t) { return t.id !== taskId; });
+            renderTaskList();
+            if (selectedTaskId === taskId) clearDetailPane();
+        })
+        .catch(function(err) { console.error('Delete failed:', err); });
+}
+
+// ── Save Notes ─────────────────────────────────────────────────────────
+function saveNotes(taskId) {
+    var textarea = document.getElementById('notes-textarea');
+    if (!textarea) return;
+
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_notes: textarea.value })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+        }
+    })
+    .catch(function(err) { console.error('Failed to save notes:', err); });
+}
+
+// ── Toggle Sections ────────────────────────────────────────────────────
+function toggleSection(sectionId) {
+    var body = document.getElementById('body-' + sectionId);
+    var toggle = document.getElementById('toggle-' + sectionId);
+
+    if (body.classList.contains('collapsed')) {
+        body.classList.remove('collapsed');
+        toggle.innerHTML = '&#9662;'; // ▾
+    } else {
+        body.classList.add('collapsed');
+        toggle.innerHTML = '&#9656;'; // ▸
+    }
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────
+function timeAgo(isoString) {
+    if (!isoString) return 'never';
+    var now = new Date();
+    var date = new Date(isoString);
+    var seconds = Math.floor((now - date) / 1000);
+
+    if (seconds < 0) return 'just now';
+    if (seconds < 60) return seconds + 's ago';
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + ' min ago';
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + ' hr ago';
+    var days = Math.floor(hours / 24);
+    if (days < 30) return days + 'd ago';
+    var months = Math.floor(days / 30);
+    return months + 'mo ago';
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    var d = new Date(dateStr);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+}
+
+function priorityDot(priority) {
+    var p = priority || 3;
+    return '<span class="priority-dot p' + p + '"></span>';
+}
+
+function parseStatusIcon(parseStatus) {
+    var status = parseStatus || 'parsed';
+    if (status === 'parsed') {
+        // Show briefly then fade — or always show as subtle indicator
+    }
+    return '<span class="parse-icon"><span class="parse-indicator ' + status + '"><span class="parse-ring"></span></span></span>';
+}
+
+function parseStatusBadge(parseStatus, taskId) {
+    var status = parseStatus || 'parsed';
+    var labels = {
+        unparsed: 'Awaiting parse',
+        queued: 'Queued',
+        parsing: 'Parsing\u2026',
+        parsed: 'Parsed'
+    };
+    var label = labels[status] || status;
+    // Make unparsed/queued clickable to trigger refresh
+    if (taskId && (status === 'unparsed' || status === 'queued' || status === 'parsed')) {
+        return '<span class="parse-status-badge ' + status + ' clickable" '
+            + 'onclick="event.stopPropagation(); refreshTask(' + taskId + ')" '
+            + 'title="Click to refresh with AI">'
+            + '<span class="parse-indicator ' + status + '"><span class="parse-ring"></span></span>'
+            + escapeHtml(label)
+            + '</span>';
+    }
+    return '<span class="parse-status-badge ' + status + '">'
+        + '<span class="parse-indicator ' + status + '"><span class="parse-ring"></span></span>'
+        + escapeHtml(label)
+        + '</span>';
+}
+
+function sourceMetaLink(task) {
+    var icon = sourceTypeIcon(task.source_type);
+    var label = '';
+    // Build a rich one-line preview from source_snippet
+    if (task.source_snippet) {
+        label = truncate(task.source_snippet, 50);
+    } else {
+        label = task.source_type || 'manual';
+    }
+    if (task.source_url) {
+        return icon + ' <a href="' + escapeHtml(task.source_url) + '" target="_blank" '
+            + 'class="source-meta-link" title="Open in Outlook/Teams">'
+            + escapeHtml(label) + ' \u2197</a>';
+    }
+    return icon + ' ' + escapeHtml(label);
+}
+
+function sourceTypeIcon(sourceType) {
+    var icons = {
+        email: '&#9993;',
+        meeting: '&#128197;',
+        chat: '&#128172;',
+        manual: '&#9998;'
+    };
+    return '<span class="source-icon">' + (icons[sourceType] || icons.manual) + '</span>';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function truncate(str, maxLen) {
+    if (!str) return '';
+    return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
+}
+
+// ── Rich Text with Inline People Pills ─────────────────────────────────
+function renderRichText(text, keyPeople) {
+    if (!text) return '';
+    var people = parsePeople(keyPeople);
+    if (!people.length) return escapeHtml(text);
+
+    // Build a list of names to match (full names first, then first names)
+    var replacements = [];
+    people.forEach(function(p) {
+        if (p.name) {
+            replacements.push({ match: p.name, person: p });
+        }
+    });
+    // Sort longest first so "Pratap Ladhani" matches before "Pratap"
+    replacements.sort(function(a, b) { return b.match.length - a.match.length; });
+
+    // Split text by matched names, replacing with inline pills
+    var result = text;
+    var tokens = [];
+    var remaining = result;
+
+    // Escape HTML first, then insert pill markup
+    // Strategy: find all name positions, split into segments
+    var segments = [];
+    var lower = remaining.toLowerCase();
+
+    // Find all match positions
+    var matches = [];
+    replacements.forEach(function(r) {
+        var searchLower = r.match.toLowerCase();
+        var startIdx = 0;
+        while (true) {
+            var pos = lower.indexOf(searchLower, startIdx);
+            if (pos === -1) break;
+            // Check it's not inside another match
+            var overlaps = matches.some(function(m) {
+                return pos < m.end && (pos + r.match.length) > m.start;
+            });
+            if (!overlaps) {
+                matches.push({ start: pos, end: pos + r.match.length, person: r.person });
+            }
+            startIdx = pos + 1;
+        }
+        // Also try first name only
+        var firstName = r.match.split(' ')[0];
+        if (firstName.length > 2 && firstName !== r.match) {
+            var fnLower = firstName.toLowerCase();
+            startIdx = 0;
+            while (true) {
+                var pos = lower.indexOf(fnLower, startIdx);
+                if (pos === -1) break;
+                // Word boundary check
+                var before = pos > 0 ? remaining[pos - 1] : ' ';
+                var after = pos + firstName.length < remaining.length ? remaining[pos + firstName.length] : ' ';
+                var isWord = /\W/.test(before) && /\W/.test(after);
+                var overlaps = matches.some(function(m) {
+                    return pos < m.end && (pos + firstName.length) > m.start;
+                });
+                if (isWord && !overlaps) {
+                    matches.push({ start: pos, end: pos + firstName.length, person: r.person });
+                }
+                startIdx = pos + 1;
+            }
+        }
+    });
+
+    // Sort matches by position
+    matches.sort(function(a, b) { return a.start - b.start; });
+
+    // Build HTML from segments
+    var html = '';
+    var cursor = 0;
+    matches.forEach(function(m) {
+        if (m.start > cursor) {
+            html += escapeHtml(remaining.substring(cursor, m.start));
+        }
+        var matchedText = remaining.substring(m.start, m.end);
+        html += '<span class="inline-person-pill">'
+            + '<span class="inline-pill-avatar">' + getInitials(m.person.name) + '</span>'
+            + escapeHtml(matchedText)
+            + '</span>';
+        cursor = m.end;
+    });
+    if (cursor < remaining.length) {
+        html += escapeHtml(remaining.substring(cursor));
+    }
+
+    return html;
+}
+
+// ── Sync Status ────────────────────────────────────────────────────────
+// Server writes a .sync_requested marker every 30 min (PeriodicCallback).
+// Claude's Stop hook picks it up and runs /todo-refresh.
+// Dashboard shows status and allows manual trigger.
+
+function fetchSyncStatus() {
+    fetch('/api/sync-status')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            updateSyncUI(data);
+        })
+        .catch(function() {});
+}
+
+function updateSyncUI(data) {
+    var btn = document.getElementById('sync-btn');
+    var statusText = document.getElementById('sync-status-text');
+
+    if (data.sync_pending) {
+        btn.classList.add('queued');
+        btn.classList.remove('syncing');
+        btn.title = 'Sync queued — will run on next Claude interaction';
+    } else {
+        btn.classList.remove('queued');
+        btn.classList.remove('syncing');
+        btn.title = 'Sync with M365';
+    }
+
+    if (data.last_sync && data.last_sync.synced_at) {
+        var newSyncTime = data.last_sync.synced_at;
+        if (lastSyncTime && newSyncTime !== lastSyncTime) {
+            fetchTasks();
+        }
+        lastSyncTime = newSyncTime;
+        statusText.textContent = timeAgo(newSyncTime);
+    } else {
+        statusText.textContent = '';
+    }
+}
+
+function requestSync() {
+    var btn = document.getElementById('sync-btn');
+    if (btn.classList.contains('queued')) return;
+
+    btn.classList.add('queued');
+    btn.title = 'Sync queued — will run on next Claude interaction';
+
+    fetch('/api/sync-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (!data.ok) {
+            btn.classList.remove('queued');
+            btn.title = data.message || 'Sync failed';
+        }
+    })
+    .catch(function(err) {
+        btn.classList.remove('queued');
+        btn.title = 'Sync with M365';
+        console.error('Sync request failed:', err);
+    });
+}

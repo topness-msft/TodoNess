@@ -1,0 +1,113 @@
+{
+  "test_runs": [
+    {
+      "id": "run-001",
+      "name": "Phase 7 - Unit Tests",
+      "status": "passed",
+      "timestamp": "2026-02-15T14:45:00Z",
+      "tests_total": 55,
+      "tests_passed": 55,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "timeline": [
+        {
+          "type": "info",
+          "timestamp": "2026-02-15T14:44:00Z",
+          "message": "Starting unit test suite"
+        },
+        {
+          "type": "info",
+          "timestamp": "2026-02-15T14:44:30Z",
+          "message": "test_db: 11 tests passed"
+        },
+        {
+          "type": "info",
+          "timestamp": "2026-02-15T14:44:45Z",
+          "message": "test_models: 21 tests passed"
+        },
+        {
+          "type": "info",
+          "timestamp": "2026-02-15T14:45:00Z",
+          "message": "test_handlers: 23 tests passed"
+        }
+      ]
+    },
+    {
+      "id": "run-002",
+      "name": "E2E Dashboard Tests (run-002)",
+      "status": "passed",
+      "timestamp": "2026-02-15T19:54:47.041726+00:00",
+      "tests_total": 9,
+      "tests_passed": 9,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "timeline": [
+        {
+          "type": "info",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "Starting E2E test suite"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "01 dashboard empty",
+          "path": "test-runs/run-002/screenshots/01-dashboard-empty.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "02 input bar",
+          "path": "test-runs/run-002/screenshots/02-input-bar.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "03 empty state",
+          "path": "test-runs/run-002/screenshots/03-empty-state.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "04 task created",
+          "path": "test-runs/run-002/screenshots/04-task-created.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "05 two tasks",
+          "path": "test-runs/run-002/screenshots/05-two-tasks.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "06 task selected",
+          "path": "test-runs/run-002/screenshots/06-task-selected.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "07 task completed",
+          "path": "test-runs/run-002/screenshots/07-task-completed.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "08 stats display",
+          "path": "test-runs/run-002/screenshots/08-stats-display.png"
+        },
+        {
+          "type": "screenshot",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "09 websocket connected",
+          "path": "test-runs/run-002/screenshots/09-websocket-connected.png"
+        },
+        {
+          "type": "info",
+          "timestamp": "2026-02-15T19:54:47.041726+00:00",
+          "message": "E2E test suite completed"
+        }
+      ],
+      "video": "test-runs/run-002/recording.webm"
+    }
+  ]
+}

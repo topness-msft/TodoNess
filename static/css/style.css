@@ -1,0 +1,1404 @@
+/* ── Reset & Base ────────────────────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+    font-size: 14px;
+    color: #242424;
+    background: #f5f5f5;
+    overflow: hidden;
+}
+
+/* ── App Layout ─────────────────────────────────────────────────────── */
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* ── Top Bar (Outlook-style command bar) ────────────────────────────── */
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    padding: 0 20px;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.app-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f6cbd;
+}
+
+.top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ── Sync Button (pill in Suggestions header) ─────────────────────── */
+.sync-btn-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 10px;
+    background: #f0f0f0;
+    color: #707070;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.sync-btn-inline:hover {
+    background: #ebf3fc;
+    color: #0f6cbd;
+}
+
+.sync-btn-inline.queued {
+    background: #fff8e1;
+    color: #d47a0a;
+}
+
+.sync-btn-inline.syncing {
+    background: #ebf3fc;
+    color: #0f6cbd;
+    cursor: default;
+}
+
+.sync-btn-inline.syncing .sync-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.sync-icon {
+    display: inline-block;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.sync-status-text {
+    font-size: 11px;
+    color: #9e9e9e;
+    margin-left: 4px;
+}
+
+/* ── Connection Status Indicator ────────────────────────────────────── */
+.connection-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.connection-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.connection-indicator.connected {
+    color: #0d7d3b;
+    background: #e6f4ea;
+}
+
+.connection-indicator.connected .connection-dot {
+    background: #0d7d3b;
+}
+
+.connection-indicator.connecting {
+    color: #d47a0a;
+    background: #fff8e1;
+}
+
+.connection-indicator.connecting .connection-dot {
+    background: #d47a0a;
+    animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.connection-indicator.disconnected {
+    color: #bc2f32;
+    background: #fdf3f4;
+}
+
+.connection-indicator.disconnected .connection-dot {
+    background: #bc2f32;
+}
+
+/* ── Buttons (Outlook style) ───────────────────────────────────────── */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d1d1d1;
+    border-radius: 4px;
+    padding: 5px 16px;
+    font-size: 13px;
+    font-weight: 400;
+    font-family: inherit;
+    cursor: pointer;
+    background: #fff;
+    color: #242424;
+    transition: background 0.1s, border-color 0.1s;
+}
+
+.btn:hover {
+    background: #f5f5f5;
+    border-color: #c7c7c7;
+}
+
+.btn:active {
+    background: #e8e8e8;
+}
+
+.btn-primary {
+    background: #0f6cbd;
+    color: #fff;
+    border-color: #0f6cbd;
+}
+
+.btn-primary:hover {
+    background: #115ea3;
+}
+
+.btn-primary:active {
+    background: #0c3b5e;
+}
+
+.btn-danger {
+    color: #bc2f32;
+    border-color: #bc2f32;
+}
+
+.btn-danger:hover {
+    background: #fdf3f4;
+}
+
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+/* ── Input Bar (Outlook search-bar style) ──────────────────────────── */
+.input-bar {
+    padding: 8px 20px;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+.input-bar-form {
+    display: flex;
+    gap: 8px;
+}
+
+.task-input {
+    flex: 1;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #d1d1d1;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    background: #f5f5f5;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.task-input:focus {
+    border-color: #0f6cbd;
+    background: #fff;
+    box-shadow: 0 0 0 1px #0f6cbd;
+}
+
+.task-input::placeholder {
+    color: #9e9e9e;
+}
+
+/* ── Main Content ───────────────────────────────────────────────────── */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ── Left Panel (Outlook message list) ──────────────────────────────── */
+.left-panel {
+    width: 400px;
+    min-width: 320px;
+    border-right: 1px solid #e0e0e0;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.search-bar {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+.search-input {
+    width: 100%;
+    height: 32px;
+    padding: 0 10px 0 30px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    background: #f5f5f5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239e9e9e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 10px center;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.search-input:focus {
+    border-color: #0f6cbd;
+    background-color: #fff;
+    box-shadow: 0 0 0 1px #0f6cbd;
+}
+
+.search-input::placeholder {
+    color: #9e9e9e;
+}
+
+.task-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* ── Sections (Outlook date groups) ─────────────────────────────────── */
+.section {
+    border-bottom: none;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px 6px;
+    cursor: pointer;
+    user-select: none;
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.section-header:hover {
+    background: #fafafa;
+}
+
+.section-toggle {
+    font-size: 10px;
+    color: #707070;
+    width: 12px;
+    text-align: center;
+    transition: transform 0.15s;
+}
+
+.section-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #242424;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.section-count {
+    font-size: 12px;
+    color: #0f6cbd;
+    font-weight: 600;
+    background: #ebf3fc;
+    padding: 0 7px;
+    border-radius: 10px;
+    margin-left: 4px;
+    min-width: 20px;
+    text-align: center;
+    line-height: 20px;
+}
+
+.section-body {
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+}
+
+.section-body.collapsed {
+    max-height: 0 !important;
+    overflow: hidden;
+}
+
+/* ── Task Rows (Outlook email-list style) ───────────────────────────── */
+.task-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid #f0f0f0;
+    gap: 10px;
+    min-height: 56px;
+}
+
+.task-row:hover {
+    background: #f5f5f5;
+}
+
+.task-row.selected {
+    border-left-color: #0f6cbd;
+    background: #ebf3fc;
+}
+
+.task-row .priority-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+}
+
+.task-row-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.task-row-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.task-row .task-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 600;
+    color: #242424;
+}
+
+.task-row.selected .task-title {
+    color: #0f6cbd;
+}
+
+.task-row .task-due {
+    font-size: 12px;
+    color: #707070;
+    flex-shrink: 0;
+    font-weight: 400;
+}
+
+.task-row .task-due.overdue {
+    color: #bc2f32;
+    font-weight: 600;
+}
+
+.task-row-preview {
+    font-size: 12px;
+    color: #707070;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+    line-height: 1.3;
+}
+
+.task-row .parse-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* ── Priority Dots ──────────────────────────────────────────────────── */
+.p1 { background: #bc2f32; }
+.p2 { background: #d47a0a; }
+.p3 { background: #0f6cbd; }
+.p4 { background: #9e9e9e; }
+.p5 { background: #c7c7c7; }
+
+/* ── Parse Status Icons (concentric circles) ───────────────────────── */
+.parse-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    position: relative;
+}
+
+/* Unparsed: empty circle outline — waiting, nothing happening */
+.parse-indicator.unparsed .parse-ring {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #d1d1d1;
+    background: transparent;
+}
+
+/* Queued: outer ring + small inner dot — queued up */
+.parse-indicator.queued .parse-ring {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #0f6cbd;
+    background: transparent;
+    position: relative;
+}
+
+.parse-indicator.queued .parse-ring::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #0f6cbd;
+}
+
+/* Parsing: animated filling ring — actively processing */
+.parse-indicator.parsing .parse-ring {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #0f6cbd;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.parse-indicator.parsing .parse-ring::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #0f6cbd;
+    animation: parse-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes parse-pulse {
+    0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0.4; }
+    50%  { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.4; }
+}
+
+/* Parsed: solid filled circle with checkmark — done */
+.parse-indicator.parsed .parse-ring {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #0d7d3b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.parse-indicator.parsed .parse-ring::after {
+    content: '\2713';
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* ── Parse Status Badge (detail view) ──────────────────────────────── */
+.parse-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.parse-status-badge.unparsed {
+    background: #f0f0f0;
+    color: #707070;
+}
+
+.parse-status-badge.queued {
+    background: #ebf3fc;
+    color: #0f6cbd;
+}
+
+.parse-status-badge.parsing {
+    background: #ebf3fc;
+    color: #0f6cbd;
+}
+
+.parse-status-badge.parsed {
+    background: #e6f4ea;
+    color: #0d7d3b;
+}
+
+.parse-status-badge.clickable {
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.parse-status-badge.clickable:hover {
+    box-shadow: 0 0 0 2px #0f6cbd40;
+}
+
+.parse-status-badge.unparsed.clickable:hover {
+    background: #e0e0e0;
+}
+
+.parse-status-badge.parsed.clickable:hover {
+    background: #d0edd4;
+}
+
+.parse-status-badge .parse-indicator {
+    width: 12px;
+    height: 12px;
+}
+
+.parse-status-badge .parse-indicator .parse-ring {
+    width: 10px !important;
+    height: 10px !important;
+}
+
+.parse-status-badge .parse-indicator.parsed .parse-ring::after {
+    font-size: 7px;
+}
+
+.parse-status-badge .parse-indicator.queued .parse-ring::after {
+    width: 3px;
+    height: 3px;
+}
+
+.parse-status-badge .parse-indicator.parsing .parse-ring::after {
+    width: 6px;
+    height: 6px;
+}
+
+/* ── Right Panel (Outlook reading pane) ─────────────────────────────── */
+.right-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #fafafa;
+}
+
+.detail-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #9e9e9e;
+    font-size: 14px;
+    gap: 8px;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    color: #d1d1d1;
+    margin-bottom: 4px;
+}
+
+/* ── Detail Cards ───────────────────────────────────────────────────── */
+.detail-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.1);
+    padding: 16px 20px;
+}
+
+.detail-card h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #242424;
+    line-height: 1.3;
+}
+
+.detail-card .detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.detail-card .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #707070;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.status-badge.active { background: #ebf3fc; color: #0f6cbd; }
+.status-badge.in_progress { background: #fff8e1; color: #8a6914; }
+.status-badge.suggested { background: #f0f0f0; color: #707070; }
+.status-badge.completed { background: #e6f4ea; color: #0d7d3b; }
+.status-badge.dismissed { background: #fdf3f4; color: #bc2f32; }
+.status-badge.deleted { background: #f0f0f0; color: #9e9e9e; }
+
+/* ── Source Type Icons ──────────────────────────────────────────────── */
+.source-icon {
+    font-size: 12px;
+    color: #707070;
+}
+
+.source-meta-link {
+    color: #0f6cbd;
+    text-decoration: none;
+    font-size: 12px;
+    transition: color 0.1s;
+}
+
+.source-meta-link:hover {
+    color: #115ea3;
+    text-decoration: underline;
+}
+
+/* ── Labels and Values ──────────────────────────────────────────────── */
+.detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #707070;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    font-size: 14px;
+    color: #242424;
+}
+
+/* ── People Pills ───────────────────────────────────────────────────── */
+.people-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.person-pill-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.person-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 16px;
+    background: #ebf3fc;
+    color: #0f6cbd;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.person-pill:hover {
+    background: #d6e8f8;
+    border-color: #0f6cbd;
+}
+
+.person-pill.has-alternatives::after {
+    content: '\25BE';
+    font-size: 10px;
+    color: #0f6cbd;
+    margin-left: 2px;
+}
+
+.person-pill-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #0f6cbd;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.person-role {
+    font-size: 11px;
+    color: #707070;
+    font-weight: 400;
+}
+
+/* ── Inline Person Pills (in description & coaching text) ───────────── */
+.inline-person-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 7px 1px 3px;
+    border-radius: 10px;
+    background: #ebf3fc;
+    color: #0f6cbd;
+    font-weight: 500;
+    font-size: inherit;
+    white-space: nowrap;
+    vertical-align: baseline;
+}
+
+.inline-pill-avatar {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #0f6cbd;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ── Alternatives Dropdown ──────────────────────────────────────────── */
+.alternatives-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08);
+    z-index: 100;
+    min-width: 240px;
+    overflow: hidden;
+}
+
+.alternatives-dropdown.open {
+    display: block;
+}
+
+.alternatives-header {
+    padding: 10px 14px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #707070;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.alternative-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.alternative-item:hover {
+    background: #f5f5f5;
+}
+
+.alternative-item .alt-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #707070;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.alternative-item .alt-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.alternative-item .alt-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #242424;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.alternative-item .alt-detail {
+    font-size: 11px;
+    color: #9e9e9e;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.alternative-item.selected .alt-avatar {
+    background: #0f6cbd;
+    color: #fff;
+}
+
+.alternative-item.selected {
+    background: #ebf3fc;
+}
+
+/* ── User Notes ─────────────────────────────────────────────────────── */
+.notes-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+    font-size: 14px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.notes-textarea:focus {
+    border-color: #0f6cbd;
+    box-shadow: 0 0 0 1px #0f6cbd;
+}
+
+/* ── Coaching Section ───────────────────────────────────────────────── */
+.coaching-card {
+    background: #f0f7ff;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.1);
+    padding: 16px 20px;
+    border-left: 3px solid #0f6cbd;
+}
+
+.coaching-card .coaching-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #0f6cbd;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.coaching-card .coaching-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #242424;
+    white-space: pre-wrap;
+}
+
+.coaching-card .coaching-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.coaching-card .coaching-header .coaching-title {
+    margin-bottom: 0;
+}
+
+.coaching-card .coaching-updated {
+    font-size: 11px;
+    color: #707070;
+    margin-top: 8px;
+}
+
+.coaching-card.coaching-stale {
+    border-left-color: #d47a0a;
+    background: #fffbf0;
+}
+
+.coaching-stale-badge {
+    font-size: 11px;
+    color: #d47a0a;
+    font-weight: 500;
+}
+
+.coaching-card.coaching-empty {
+    border-left-color: #d1d1d1;
+    background: #fafafa;
+}
+
+/* ── Skill Output Section ──────────────────────────────────────────── */
+.skill-output-card {
+    background: #f0faf4;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.1);
+    padding: 16px 20px;
+    border-left: 3px solid #0d7d3b;
+}
+
+.skill-output-card .skill-output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.skill-output-card .skill-output-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #0d7d3b;
+    letter-spacing: 0.5px;
+}
+
+.skill-output-card .skill-output-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #242424;
+    white-space: pre-wrap;
+}
+
+.skill-output-card .skill-output-updated {
+    font-size: 11px;
+    color: #707070;
+    margin-top: 8px;
+}
+
+/* ── Enriched Icon (task list rows) ────────────────────────────────── */
+.enriched-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+    margin-top: 4px;
+    color: #0d7d3b;
+    title: "Skill enriched";
+}
+
+/* ── Description ────────────────────────────────────────────────────── */
+.detail-description {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #424242;
+    white-space: pre-wrap;
+}
+
+/* ── Detail Header Row ──────────────────────────────────────────────── */
+.detail-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.detail-header-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    color: #9e9e9e;
+    transition: background 0.1s, color 0.1s;
+}
+
+.btn-icon:hover {
+    background: #fdf3f4;
+    color: #bc2f32;
+}
+
+.btn-icon-danger {
+    color: #bc2f32;
+}
+
+.btn-icon-danger:hover {
+    background: #bc2f32;
+    color: #fff;
+}
+
+/* ── Task Row Delete Button ────────────────────────────────────────── */
+.task-row-delete {
+    display: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #c7c7c7;
+    font-size: 16px;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.1s;
+    margin-top: 2px;
+}
+
+.task-row:hover .task-row-delete {
+    display: block;
+}
+
+.task-row-delete:hover {
+    color: #bc2f32;
+}
+
+/* ── Priority Selector ─────────────────────────────────────────────── */
+.priority-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.priority-dot-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.priority-dot-indicator.p1 { background: #bc2f32; }
+.priority-dot-indicator.p2 { background: #d47a0a; }
+.priority-dot-indicator.p3 { background: #0f6cbd; }
+.priority-dot-indicator.p4 { background: #9e9e9e; }
+.priority-dot-indicator.p5 { background: #c7c7c7; }
+
+.priority-select {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 20px 2px 4px;
+    font-size: 12px;
+    font-weight: 400;
+    font-family: inherit;
+    color: #424242;
+    background-color: transparent;
+    cursor: pointer;
+    outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23707070' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.priority-select:hover {
+    border-color: #d1d1d1;
+    background-color: #f5f5f5;
+}
+
+.priority-select:focus {
+    border-color: #0f6cbd;
+}
+
+/* ── Action Type Selector ─────────────────────────────────────────── */
+.action-type-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.action-type-icon {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.action-type-select {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 20px 2px 4px;
+    font-size: 12px;
+    font-weight: 400;
+    font-family: inherit;
+    color: #424242;
+    background-color: transparent;
+    cursor: pointer;
+    outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23707070' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.action-type-select:hover {
+    border-color: #d1d1d1;
+    background-color: #f5f5f5;
+}
+
+.action-type-select:focus {
+    border-color: #0f6cbd;
+}
+
+/* ── Action Badge (task list rows) ────────────────────────────────── */
+.action-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 500;
+    background: #f0f0f0;
+    color: #707070;
+    white-space: nowrap;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+/* ── Inline Edit Button ───────────────────────────────────────────── */
+.btn-edit-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 12px;
+    color: #9e9e9e;
+    transition: background 0.1s, color 0.1s;
+    vertical-align: middle;
+    margin-left: 4px;
+    padding: 0;
+}
+
+.btn-edit-inline:hover {
+    background: #ebf3fc;
+    color: #0f6cbd;
+}
+
+/* ── Description Edit Textarea ────────────────────────────────────── */
+.description-edit-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px 12px;
+    border: 1px solid #0f6cbd;
+    border-radius: 6px;
+    font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #424242;
+    resize: vertical;
+    outline: none;
+    box-shadow: 0 0 0 1px #0f6cbd;
+}
+
+/* ── Due Date Input ────────────────────────────────────────────────── */
+.due-date-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.due-date-input {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-family: inherit;
+    color: #424242;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.due-date-input:hover {
+    border-color: #d1d1d1;
+    background-color: #f5f5f5;
+}
+
+.due-date-input:focus {
+    border-color: #0f6cbd;
+    background-color: #fff;
+}
+
+.due-date-input.overdue {
+    color: #bc2f32;
+}
+
+.btn-add-date {
+    border: 1px dashed #d1d1d1;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-family: inherit;
+    color: #9e9e9e;
+    background: transparent;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-add-date:hover {
+    border-color: #0f6cbd;
+    color: #0f6cbd;
+}
+
+.btn-clear-date {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #9e9e9e;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+}
+
+.btn-clear-date:hover {
+    color: #bc2f32;
+}
+
+/* ── Action Bar (sticky bottom) ────────────────────────────────────── */
+.detail-actions-bar {
+    display: flex;
+    gap: 8px;
+    padding: 12px 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 -1px 4px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.1);
+    position: sticky;
+    bottom: 0;
+}
+
+.detail-actions-bar .btn {
+    flex: 0 0 auto;
+}
+
+.actions-spacer {
+    flex: 1;
+}
+
+.btn-refresh {
+    border: 1px solid #d1d1d1;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    background: #fff;
+    color: #707070;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.btn-refresh:hover {
+    background: #ebf3fc;
+    color: #0f6cbd;
+    border-color: #0f6cbd;
+}
+
+.btn-subtle {
+    border-color: transparent;
+    color: #707070;
+}
+
+.btn-subtle:hover {
+    background: #f0f0f0;
+    border-color: #d1d1d1;
+    color: #424242;
+}
+
+/* ── Scrollbar Styling ──────────────────────────────────────────────── */
+.task-list::-webkit-scrollbar,
+.right-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.task-list::-webkit-scrollbar-track,
+.right-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.task-list::-webkit-scrollbar-thumb,
+.right-panel::-webkit-scrollbar-thumb {
+    background: #d1d1d1;
+    border-radius: 3px;
+}
+
+.task-list::-webkit-scrollbar-thumb:hover,
+.right-panel::-webkit-scrollbar-thumb:hover {
+    background: #9e9e9e;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+
+    .left-panel {
+        width: 100%;
+        min-width: 0;
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+        max-height: 50vh;
+    }
+
+    .right-panel {
+        flex: 1;
+        min-height: 0;
+    }
+}

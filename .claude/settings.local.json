@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(claude mcp call:*)",
+      "mcp__workiq__ask_work_iq",
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "Bash(tasklist:*)",
+      "Bash(claude:*)",
+      "Bash(unset:*)",
+      "Bash(agency claude:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

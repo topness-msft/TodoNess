@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="app">
+    <!-- Top Bar -->
+    <header class="top-bar">
+        <div class="top-bar-left">
+            <img src="/static/img/icon.png" alt="TodoNess" class="app-icon">
+            <h1 class="app-title">TodoNess</h1>
+        </div>
+        <div class="top-bar-right">
+            <span id="connection-status" class="connection-indicator disconnected">
+                <span class="connection-dot"></span>
+                <span class="connection-label">Connecting</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- Input Bar -->
+    <div class="input-bar">
+        <form id="add-task-form" class="input-bar-form" onsubmit="return false;">
+            <input type="text" id="task-input" class="task-input" placeholder="Add a task..." autocomplete="off">
+            <button type="submit" class="btn btn-primary" id="add-task-btn">Add</button>
+        </form>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Left Panel: Task List -->
+        <div class="left-panel">
+            <div class="search-bar">
+                <input type="text" id="search-input" class="search-input" placeholder="Filter tasks..." autocomplete="off" oninput="applySearchFilter()">
+            </div>
+            <div id="task-list" class="task-list">
+                <!-- In Progress Section -->
+                <div class="section" id="section-in_progress">
+                    <div class="section-header" onclick="toggleSection('in_progress')">
+                        <span class="section-toggle" id="toggle-in_progress">&#9662;</span>
+                        <span class="section-title">In Progress</span>
+                        <span class="section-count" id="count-in_progress">0</span>
+                    </div>
+                    <div class="section-body" id="body-in_progress"></div>
+                </div>
+
+                <!-- Active Section -->
+                <div class="section" id="section-active">
+                    <div class="section-header" onclick="toggleSection('active')">
+                        <span class="section-toggle" id="toggle-active">&#9662;</span>
+                        <span class="section-title">Active</span>
+                        <span class="section-count" id="count-active">0</span>
+                    </div>
+                    <div class="section-body" id="body-active"></div>
+                </div>
+
+                <!-- Suggestions Section -->
+                <div class="section" id="section-suggested">
+                    <div class="section-header" onclick="toggleSection('suggested')">
+                        <span class="section-toggle" id="toggle-suggested">&#9662;</span>
+                        <span class="section-title">Suggestions</span>
+                        <span class="section-count" id="count-suggested">0</span>
+                        <button id="sync-btn" class="sync-btn-inline" onclick="event.stopPropagation(); requestSync()" title="Sync with M365">
+                            <span class="sync-icon" id="sync-icon">&#8635;</span>
+                        </button>
+                        <span id="sync-status-text" class="sync-status-text"></span>
+                    </div>
+                    <div class="section-body" id="body-suggested"></div>
+                </div>
+
+                <!-- Completed Section -->
+                <div class="section" id="section-completed">
+                    <div class="section-header" onclick="toggleSection('completed')">
+                        <span class="section-toggle" id="toggle-completed">&#9662;</span>
+                        <span class="section-title">Completed</span>
+                        <span class="section-count" id="count-completed">0</span>
+                    </div>
+                    <div class="section-body" id="body-completed"></div>
+                </div>
+
+                <!-- Dismissed Section (collapsed by default) -->
+                <div class="section" id="section-dismissed">
+                    <div class="section-header" onclick="toggleSection('dismissed')">
+                        <span class="section-toggle" id="toggle-dismissed">&#9656;</span>
+                        <span class="section-title">Dismissed</span>
+                        <span class="section-count" id="count-dismissed">0</span>
+                    </div>
+                    <div class="section-body collapsed" id="body-dismissed"></div>
+                </div>
+
+                <!-- Deleted Section (collapsed by default) -->
+                <div class="section" id="section-deleted">
+                    <div class="section-header" onclick="toggleSection('deleted')">
+                        <span class="section-toggle" id="toggle-deleted">&#9656;</span>
+                        <span class="section-title">Deleted</span>
+                        <span class="section-count" id="count-deleted">0</span>
+                    </div>
+                    <div class="section-body collapsed" id="body-deleted"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Detail Pane -->
+        <div class="right-panel">
+            <div id="detail-pane" class="detail-pane">
+                <div class="empty-state">Select a task to view details</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% end %}
