@@ -374,6 +374,7 @@ function selectTask(taskId) {
         .then(function(res) { return res.json(); })
         .then(function(data) {
             if (data.task) {
+                data.task._contexts = data.contexts || [];
                 renderDetailPane(data.task);
             }
         })
@@ -445,13 +446,20 @@ function renderDetailPane(task) {
 
     html += renderSkillButtons(task);
 
-    // Skill Output (between coaching and source)
-    if (task.skill_output) {
+    // Skill Output — prefer context entries over the summary field
+    var skillContexts = task._contexts || [];
+    if (skillContexts.length > 0 || task.skill_output) {
         html += '<div class="skill-output-card">'
             + '<div class="skill-output-header">'
             + '<div class="skill-output-title">\u26A1 Skill Output</div>'
-            + '</div>'
-            + '<div class="skill-output-text">' + renderRichText(task.skill_output, task.key_people) + '</div>';
+            + '</div>';
+        if (skillContexts.length > 0) {
+            skillContexts.forEach(function(ctx) {
+                html += '<div class="skill-output-text">' + renderRichText(ctx.content, task.key_people) + '</div>';
+            });
+        } else {
+            html += '<div class="skill-output-text">' + renderRichText(task.skill_output, task.key_people) + '</div>';
+        }
         if (task.suggestion_refreshed_at) {
             html += '<div class="skill-output-updated">Updated ' + timeAgo(task.suggestion_refreshed_at) + '</div>';
         }
