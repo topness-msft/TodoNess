@@ -1234,10 +1234,13 @@ function renderSnoozeButton(taskId) {
         + '<div class="snooze-option" onclick="event.stopPropagation(); doSnooze(' + taskId + ',{duration_minutes:240})">4 hours</div>'
         + '<div class="snooze-option" onclick="event.stopPropagation(); snoozeTomorrow(' + taskId + ')">Tomorrow 9 AM</div>'
         + '<div class="snooze-option" onclick="event.stopPropagation(); snoozeNextMonday(' + taskId + ')">Next Monday 9 AM</div>'
-        + '<div class="snooze-option snooze-custom" onclick="event.stopPropagation(); showCustomSnooze(' + taskId + ')">'
-        + 'Pick date...'
-        + '<input type="datetime-local" class="snooze-datetime-input" id="snooze-custom-' + taskId + '" '
-        + 'onchange="event.stopPropagation(); doSnoozeCustom(' + taskId + ', this.value)" style="display:none">'
+        + '<div class="snooze-option snooze-custom">'
+        + '<label class="snooze-date-label">Pick date &amp; time:</label>'
+        + '<div class="snooze-custom-row">'
+        + '<input type="date" class="snooze-date-input" id="snooze-date-' + taskId + '" onclick="event.stopPropagation()">'
+        + '<input type="time" class="snooze-time-input" id="snooze-time-' + taskId + '" value="09:00" onclick="event.stopPropagation()">'
+        + '<button class="snooze-go-btn" onclick="event.stopPropagation(); doSnoozeCustom(' + taskId + ')">Go</button>'
+        + '</div>'
         + '</div>'
         + '</div>'
         + '</div>';
@@ -1298,18 +1301,16 @@ function snoozeNextMonday(taskId) {
     doSnooze(taskId, { snoozed_until: d.toISOString() });
 }
 
-function showCustomSnooze(taskId) {
-    var input = document.getElementById('snooze-custom-' + taskId);
-    if (input) {
-        input.style.display = 'block';
-        input.focus();
-        try { input.showPicker(); } catch(e) {}
-    }
-}
-
-function doSnoozeCustom(taskId, value) {
-    if (!value) return;
-    var d = new Date(value);
+function doSnoozeCustom(taskId) {
+    var dateInput = document.getElementById('snooze-date-' + taskId);
+    var timeInput = document.getElementById('snooze-time-' + taskId);
+    if (!dateInput || !dateInput.value) return;
+    var dateParts = dateInput.value.split('-');
+    var timeParts = (timeInput && timeInput.value ? timeInput.value : '09:00').split(':');
+    var d = new Date(
+        parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]),
+        parseInt(timeParts[0]), parseInt(timeParts[1]), 0
+    );
     doSnooze(taskId, { snoozed_until: d.toISOString() });
 }
 

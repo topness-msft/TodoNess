@@ -1613,15 +1613,54 @@ html, body {
     border-top: 1px solid #f0f0f0;
 }
 
-.snooze-datetime-input {
+.snooze-date-label {
     display: block;
-    width: 100%;
-    margin-top: 4px;
+    font-size: 11px;
+    color: #707070;
+    margin-bottom: 4px;
+}
+
+.snooze-custom-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.snooze-date-input {
+    flex: 1;
     padding: 4px 6px;
     border: 1px solid #d1d1d1;
     border-radius: 4px;
     font-size: 12px;
     font-family: inherit;
+    cursor: pointer;
+}
+
+.snooze-time-input {
+    width: 70px;
+    padding: 4px 6px;
+    border: 1px solid #d1d1d1;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+}
+
+.snooze-go-btn {
+    padding: 4px 10px;
+    border: 1px solid #795b00;
+    border-radius: 4px;
+    background: #fef3cd;
+    color: #795b00;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.snooze-go-btn:hover {
+    background: #795b00;
+    color: #fff;
 }
 
 /* ── Overdue ────────────────────────────────────────────────────────── */
