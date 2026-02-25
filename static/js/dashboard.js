@@ -250,7 +250,6 @@ function taskMatchesSearch(task) {
 
 // ── Render Task List ───────────────────────────────────────────────────
 function renderTaskList() {
-    var inProgress = [];
     var active = [];
     var waiting = [];
     var snoozed = [];
@@ -261,9 +260,8 @@ function renderTaskList() {
 
     tasks.forEach(function(t) {
         if (!taskMatchesSearch(t)) return;
-        if (t.status === 'in_progress') {
-            inProgress.push(t);
-        } else if (t.status === 'active') {
+        // Treat in_progress as active (section removed)
+        if (t.status === 'active' || t.status === 'in_progress') {
             active.push(t);
         } else if (t.status === 'waiting') {
             waiting.push(t);
@@ -280,11 +278,10 @@ function renderTaskList() {
         }
     });
 
-    renderSection('in_progress', inProgress);
     renderSection('active', active);
+    renderSection('suggested', suggested);
     renderSection('waiting', waiting);
     renderSection('snoozed', snoozed);
-    renderSection('suggested', suggested);
     renderSection('completed', completed);
     renderSection('dismissed', dismissed);
     renderSection('deleted', deleted);
@@ -983,17 +980,11 @@ function getActionButtons(task) {
         html += '<button class="btn btn-primary" onclick="doAction(' + task.id + ',\'promote\')">Accept Task</button>';
         html += '<button class="btn" onclick="doAction(' + task.id + ',\'transition\',\'waiting\')">Waiting</button>';
         html += '<button class="btn btn-subtle" onclick="doAction(' + task.id + ',\'dismiss\')">Dismiss</button>';
-    } else if (task.status === 'active') {
-        html += '<button class="btn btn-primary" onclick="doAction(' + task.id + ',\'start\')">Start Working</button>';
-        html += renderSnoozeButton(task.id);
-        html += '<button class="btn" onclick="doAction(' + task.id + ',\'transition\',\'waiting\')">Waiting</button>';
-        html += '<button class="btn" onclick="doAction(' + task.id + ',\'complete\')">Mark Complete</button>';
-        html += '<button class="btn btn-subtle" onclick="doAction(' + task.id + ',\'dismiss\')">Dismiss</button>';
-    } else if (task.status === 'in_progress') {
+    } else if (task.status === 'active' || task.status === 'in_progress') {
         html += '<button class="btn btn-primary" onclick="doAction(' + task.id + ',\'complete\')">Mark Complete</button>';
         html += renderSnoozeButton(task.id);
         html += '<button class="btn" onclick="doAction(' + task.id + ',\'transition\',\'waiting\')">Waiting</button>';
-        html += '<button class="btn" onclick="doAction(' + task.id + ',\'transition\',\'active\')">Pause</button>';
+        html += '<button class="btn btn-subtle" onclick="doAction(' + task.id + ',\'dismiss\')">Dismiss</button>';
     } else if (task.status === 'waiting') {
         html += '<button class="btn btn-primary" onclick="doAction(' + task.id + ',\'transition\',\'active\')">Move to Active</button>';
         html += renderSnoozeButton(task.id);
@@ -1111,7 +1102,7 @@ function toggleSection(sectionId) {
 }
 
 // ── Drag and Drop ─────────────────────────────────────────────────────
-var ALL_SECTIONS = ['in_progress', 'active', 'waiting', 'snoozed', 'suggested', 'completed', 'dismissed', 'deleted'];
+var ALL_SECTIONS = ['active', 'suggested', 'waiting', 'snoozed', 'completed', 'dismissed', 'deleted'];
 
 function setupDropZones() {
     ALL_SECTIONS.forEach(function(sectionId) {
