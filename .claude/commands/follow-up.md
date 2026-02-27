@@ -50,8 +50,10 @@ Based on context, draft a follow-up message. Choose the right channel based on `
 - `meeting` → draft as email (more formal for meeting follow-ups)
 - `manual` → draft as email by default
 
-**Format:**
+**You MUST output your draft using this EXACT format, including the `<<<SKILL_OUTPUT>>>` and `<<<END_SKILL_OUTPUT>>>` marker lines. These markers are required for the dashboard to capture your output:**
+
 ```
+<<<SKILL_OUTPUT>>>
 Channel: [Email / Teams]
 To: [name] <[email]>
 Subject: [if email — e.g. "Following up: [topic]"]
@@ -62,6 +64,7 @@ Subject: [if email — e.g. "Following up: [topic]"]
 Last interaction: [date/summary if found]
 Days since last contact: [N days]
 Urgency: [based on due_date proximity]
+<<<END_SKILL_OUTPUT>>>
 ```
 
 **Guidelines:**
@@ -72,42 +75,4 @@ Urgency: [based on due_date proximity]
 - Keep it brief — follow-ups should be easy to respond to
 - Suggest a quick call if the topic is complex
 
-## Step 4: Write to skill_output — MANDATORY, DO NOT SKIP
-
-**You MUST execute this step immediately after drafting. Do NOT ask for confirmation. Do NOT present options. Just run the code.**
-
-This runs in a non-interactive `claude -p` session — there is no user to respond. Execute the Bash tool with this Python code now:
-
-```python
-import sqlite3
-from datetime import datetime, timezone
-
-# skill_output must contain the complete draft you composed in Step 3.
-# Assign it as a triple-quoted string with the EXACT text you drafted above.
-skill_output = """<PASTE YOUR FULL DRAFT HERE — Channel:, To:, Subject:, body, notes>"""
-
-task_id = $ARGUMENTS
-
-conn = sqlite3.connect('$PROJECT_ROOT/data/claudetodo.db')
-now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-conn.execute(
-    """UPDATE tasks
-       SET skill_output = ?, suggestion_refreshed_at = ?, updated_at = ?
-       WHERE id = ?""",
-    (skill_output, now, now, task_id)
-)
-conn.commit()
-conn.close()
-print(f"skill_output written to task #{task_id}")
-```
-
-**Critical rules:**
-- Execute this code via Bash immediately — do NOT ask "Would you like me to save this?"
-- Write to `skill_output`, NOT `coaching_text`
-- The `skill_output` variable MUST contain the draft text — do not leave it empty or undefined
-- If you do not execute this code, the dashboard will show no output
-
-## Step 5: Display results
-
-Show the draft and confirm the DB write succeeded:
-> "Follow-up draft saved to task #[id]. Copy into [Email/Teams] to send."
+Your output will be automatically saved to the dashboard. No further action needed.

@@ -43,39 +43,3 @@ SCAN_TEAMS_MEETINGS = (
 # WorkIQ can't reliably distinguish "still waiting" from "already resolved informally".
 # Re-evaluate if WorkIQ gains thread-state awareness.
 SCAN_AWAITING_RESPONSE = None
-# SCAN_AWAITING_RESPONSE = (
-#     "What messages or emails have I SENT in the last {days} days that contain a question, "
-#     "request, or ask where the recipient hasn't responded yet? Only include items where "
-#     "I am clearly waiting for a response — not messages I sent that were purely informational. "
-#     "For each item, use action_type 'awaiting-response'. "
-#     + _TASK_OUTPUT_FORMAT
-# )
-
-# Legacy single-call query (kept for reference, no longer used)
-FULL_SCAN = SCAN_TEAMS_MEETINGS
-
-EMAIL_THREAD = (
-    "Show me the full email thread for the email with subject '{subject}' "
-    "from {sender}. Include all replies and the most recent message."
-)
-
-PERSON_CONTEXT = (
-    "What recent interactions have I had with {person_name}? "
-    "Include recent emails, meetings, and any pending items."
-)
-
-CALENDAR_AVAILABILITY = (
-    "What does my calendar look like for {date_range}? "
-    "Show me free and busy slots."
-)
-
-TASK_REFRESH = (
-    "Regarding '{task_title}': {task_description} "
-    "What's the latest context from my emails and meetings about this? "
-    "Has anything changed since {last_refresh}?"
-)
-
-
-def format_query(template: str, **kwargs) -> str:
-    """Format a query template with the given parameters."""
-    return template.format(**kwargs)

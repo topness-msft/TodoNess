@@ -42,10 +42,12 @@ This helps build a preparation plan that's informed by actual meeting context an
 
 ## Step 3: Build preparation notes
 
-Based on context, build a structured prep checklist:
+Based on context, build a structured prep checklist.
 
-**Format:**
+**You MUST output your prep notes using this EXACT format, including the `<<<SKILL_OUTPUT>>>` and `<<<END_SKILL_OUTPUT>>>` marker lines. These markers are required for the dashboard to capture your output:**
+
 ```
+<<<SKILL_OUTPUT>>>
 Preparation Notes: [meeting/event name]
 Date: [due_date or meeting date if known]
 Attendees: [key_people names and roles]
@@ -69,6 +71,7 @@ Questions to ask:
 - [Question about open items]
 
 Time estimate: [X minutes of prep needed]
+<<<END_SKILL_OUTPUT>>>
 ```
 
 **Guidelines:**
@@ -79,42 +82,4 @@ Time estimate: [X minutes of prep needed]
 - If the meeting is recurring, note what changed since last time
 - Order prep items by priority — most important first
 
-## Step 4: Write to skill_output — MANDATORY, DO NOT SKIP
-
-**You MUST execute this step immediately after drafting. Do NOT ask for confirmation. Do NOT present options. Just run the code.**
-
-This runs in a non-interactive `claude -p` session — there is no user to respond. Execute the Bash tool with this Python code now:
-
-```python
-import sqlite3
-from datetime import datetime, timezone
-
-# skill_output must contain the complete prep notes you composed in Step 3.
-# Assign it as a triple-quoted string with the EXACT text you drafted above.
-skill_output = """<PASTE YOUR FULL PREP NOTES HERE>"""
-
-task_id = $ARGUMENTS
-
-conn = sqlite3.connect('$PROJECT_ROOT/data/claudetodo.db')
-now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-conn.execute(
-    """UPDATE tasks
-       SET skill_output = ?, suggestion_refreshed_at = ?, updated_at = ?
-       WHERE id = ?""",
-    (skill_output, now, now, task_id)
-)
-conn.commit()
-conn.close()
-print(f"skill_output written to task #{task_id}")
-```
-
-**Critical rules:**
-- Execute this code via Bash immediately — do NOT ask "Would you like me to save this?"
-- Write to `skill_output`, NOT `coaching_text`
-- The `skill_output` variable MUST contain the prep notes — do not leave it empty or undefined
-- If you do not execute this code, the dashboard will show no output
-
-## Step 5: Display results
-
-Show the preparation notes and confirm the DB write succeeded:
-> "Prep notes saved to task #[id]. Check off items as you go."
+Your output will be automatically saved to the dashboard. No further action needed.

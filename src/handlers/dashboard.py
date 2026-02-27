@@ -2,7 +2,7 @@
 
 import tornado.web
 
-from ..models import list_tasks, get_stats, get_last_sync
+from ..models import get_stats, get_last_sync
 
 
 class DashboardHandler(tornado.web.RequestHandler):

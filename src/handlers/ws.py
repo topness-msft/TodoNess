@@ -11,7 +11,7 @@ class TaskWebSocketHandler(tornado.websocket.WebSocketHandler):
     """WebSocket endpoint at /ws for real-time task updates."""
 
     def check_origin(self, origin):
-        return True  # Allow local connections
+        return "localhost" in origin or "127.0.0.1" in origin
 
     def open(self):
         _clients.add(self)

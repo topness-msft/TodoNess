@@ -52,8 +52,10 @@ Also check `user_notes` for duration hints (e.g. "1 hour", "15 min"). Default to
 
 Parse the WorkIQ response and build a clean summary. Do NOT include agenda items (those stay in coaching_text).
 
-Format:
+**You MUST output your summary using this EXACT format, including the `<<<SKILL_OUTPUT>>>` and `<<<END_SKILL_OUTPUT>>>` marker lines. These markers are required for the dashboard to capture your output:**
+
 ```
+<<<SKILL_OUTPUT>>>
 Suggested meeting slots:
 1. [Day], [Time] - [Time] ([duration]) — all attendees free
 2. [Day], [Time] - [Time] ([duration]) — all attendees free
@@ -61,47 +63,9 @@ Suggested meeting slots:
 
 Duration: [from user_notes hint or 30 min default]
 Attendees: [full names from key_people]
+<<<END_SKILL_OUTPUT>>>
 ```
 
 Pick the 3 best slots. Filter to each person's Outlook working hours only — never suggest slots outside configured work schedules. Prefer morning slots and avoid lunch hour (12-1pm). If no overlapping working-hours slots exist in the window, report that clearly and suggest extending the date range.
 
-## Step 5: Write to skill_output — MANDATORY, DO NOT SKIP
-
-**You MUST execute this step immediately after drafting. Do NOT ask for confirmation. Do NOT present options. Just run the code.**
-
-This runs in a non-interactive `claude -p` session — there is no user to respond. Execute the Bash tool with this Python code now:
-
-```python
-import sqlite3
-from datetime import datetime, timezone
-
-# skill_output must contain the complete scheduling suggestions you composed in Step 4.
-# Assign it as a triple-quoted string with the EXACT text you drafted above.
-skill_output = """<PASTE YOUR FULL SCHEDULING OUTPUT HERE>"""
-
-task_id = $ARGUMENTS
-
-conn = sqlite3.connect('$PROJECT_ROOT/data/claudetodo.db')
-now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-conn.execute(
-    """UPDATE tasks
-       SET skill_output = ?, suggestion_refreshed_at = ?, updated_at = ?
-       WHERE id = ?""",
-    (skill_output, now, now, task_id)
-)
-conn.commit()
-conn.close()
-print(f"skill_output written to task #{task_id}")
-```
-
-**Critical rules:**
-- Execute this code via Bash immediately — do NOT ask "Would you like me to save this?"
-- Write to `skill_output`, NOT `coaching_text`
-- The `skill_output` variable MUST contain the scheduling text — do not leave it empty or undefined
-- Agenda and coaching advice stay in coaching_text
-- If you do not execute this code, the dashboard will show no output
-
-## Step 6: Display results
-
-Show the scheduling summary and confirm the DB write succeeded:
-> "Scheduling suggestions saved to task #[id]. You can send the invite from Outlook."
+Your output will be automatically saved to the dashboard. No further action needed.

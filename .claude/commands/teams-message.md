@@ -41,10 +41,12 @@ Check `user_notes` for specific points or tone the user wants.
 
 ## Step 3: Draft the Teams message
 
-Based on context and task details, draft a Teams-appropriate message:
+Based on context and task details, draft a Teams-appropriate message.
 
-**Format:**
+**You MUST output your draft using this EXACT format, including the `<<<SKILL_OUTPUT>>>` and `<<<END_SKILL_OUTPUT>>>` marker lines. These markers are required for the dashboard to capture your output:**
+
 ```
+<<<SKILL_OUTPUT>>>
 To: [name] (via Teams)
 
 [Draft message]
@@ -52,6 +54,7 @@ To: [name] (via Teams)
 ---
 Tone: [casual/direct/detailed — inferred from context]
 Purpose: [what this message aims to accomplish]
+<<<END_SKILL_OUTPUT>>>
 ```
 
 **Guidelines:**
@@ -63,42 +66,4 @@ Purpose: [what this message aims to accomplish]
 - For a more substantive message, use a brief opener + bullets + clear ask
 - Don't over-formalize — "Hey [first name]," is fine for Teams
 
-## Step 4: Write to skill_output — MANDATORY, DO NOT SKIP
-
-**You MUST execute this step immediately after drafting. Do NOT ask for confirmation. Do NOT present options. Just run the code.**
-
-This runs in a non-interactive `claude -p` session — there is no user to respond. Execute the Bash tool with this Python code now:
-
-```python
-import sqlite3
-from datetime import datetime, timezone
-
-# skill_output must contain the complete draft you composed in Step 3.
-# Assign it as a triple-quoted string with the EXACT text you drafted above.
-skill_output = """<PASTE YOUR FULL DRAFT HERE>"""
-
-task_id = $ARGUMENTS
-
-conn = sqlite3.connect('$PROJECT_ROOT/data/claudetodo.db')
-now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-conn.execute(
-    """UPDATE tasks
-       SET skill_output = ?, suggestion_refreshed_at = ?, updated_at = ?
-       WHERE id = ?""",
-    (skill_output, now, now, task_id)
-)
-conn.commit()
-conn.close()
-print(f"skill_output written to task #{task_id}")
-```
-
-**Critical rules:**
-- Execute this code via Bash immediately — do NOT ask "Would you like me to save this?"
-- Write to `skill_output`, NOT `coaching_text`
-- The `skill_output` variable MUST contain the draft text — do not leave it empty or undefined
-- If you do not execute this code, the dashboard will show no output
-
-## Step 5: Display results
-
-Show the draft message and confirm the DB write succeeded:
-> "Teams message draft saved to task #[id]. Copy and paste into Teams to send."
+Your output will be automatically saved to the dashboard. No further action needed.

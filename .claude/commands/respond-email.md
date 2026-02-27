@@ -41,10 +41,12 @@ Also check `user_notes` for any tone, points, or constraints the user wants in t
 
 ## Step 3: Draft the email reply
 
-Based on the email context and task details, draft a professional email reply:
+Based on the email context and task details, draft a professional email reply.
 
-**Format:**
+**You MUST output your draft using this EXACT format, including the `<<<SKILL_OUTPUT>>>` and `<<<END_SKILL_OUTPUT>>>` marker lines. These markers are required for the dashboard to capture your output:**
+
 ```
+<<<SKILL_OUTPUT>>>
 To: [name] <[email]>
 Subject: Re: [inferred or from source]
 
@@ -55,6 +57,7 @@ Tone: [professional/casual/urgent — inferred from context]
 Key points addressed:
 - [point 1]
 - [point 2]
+<<<END_SKILL_OUTPUT>>>
 ```
 
 **Guidelines:**
@@ -65,43 +68,4 @@ Key points addressed:
 - Use the person's first name in the greeting (e.g. "Hi Mehdi,")
 - Do NOT include agenda items or coaching — those stay in coaching_text
 
-## Step 4: Write to skill_output — MANDATORY, DO NOT SKIP
-
-**You MUST execute this step immediately after drafting. Do NOT ask for confirmation. Do NOT present options. Just run the code.**
-
-This runs in a non-interactive `claude -p` session — there is no user to respond. Execute the Bash tool with this Python code now:
-
-```python
-import sqlite3
-from datetime import datetime, timezone
-
-# skill_output must contain the complete draft you composed in Step 3.
-# Assign it as a triple-quoted string with the EXACT text you drafted above.
-skill_output = """<PASTE YOUR FULL DRAFT HERE — To: line, Subject:, body, notes>"""
-
-task_id = $ARGUMENTS
-
-conn = sqlite3.connect('$PROJECT_ROOT/data/claudetodo.db')
-now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-conn.execute(
-    """UPDATE tasks
-       SET skill_output = ?, suggestion_refreshed_at = ?, updated_at = ?
-       WHERE id = ?""",
-    (skill_output, now, now, task_id)
-)
-conn.commit()
-conn.close()
-print(f"skill_output written to task #{task_id}")
-```
-
-**Critical rules:**
-- Execute this code via Bash immediately — do NOT ask "Would you like me to save this?"
-- Write to `skill_output`, NOT `coaching_text`
-- The `skill_output` variable MUST contain the draft text — do not leave it empty or undefined
-- If you do not execute this code, the dashboard will show no output
-
-## Step 5: Display results
-
-Show the draft email and confirm the DB write succeeded:
-> "Email draft saved to task #[id]. You can copy this into Outlook to send."
-> "Edit the draft in your notes or re-run `/respond-email [id]` after updating user_notes to adjust."
+Your output will be automatically saved to the dashboard. No further action needed.
