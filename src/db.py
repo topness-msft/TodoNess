@@ -29,6 +29,9 @@ def _migrate(conn: sqlite3.Connection):
     if "snoozed_until" not in cols:
         conn.execute("ALTER TABLE tasks ADD COLUMN snoozed_until TEXT")
         conn.commit()
+    if "waiting_activity" not in cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN waiting_activity TEXT")
+        conn.commit()
 
     # Migrate tasks table to support 'snoozed' status
     task_sql = conn.execute(
@@ -61,6 +64,7 @@ def _migrate(conn: sqlite3.Connection):
                 key_people      TEXT,
                 related_meeting TEXT,
                 user_notes      TEXT DEFAULT '',
+                waiting_activity TEXT,
                 suggestion_refreshed_at TEXT,
                 created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
                 updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
@@ -68,12 +72,12 @@ def _migrate(conn: sqlite3.Connection):
             INSERT INTO tasks_new (id, title, description, status, snoozed_until, parse_status,
                 raw_input, priority, due_date, committed_date, source_type, source_id,
                 source_url, source_snippet, coaching_text, action_type, skill_output,
-                key_people, related_meeting, user_notes, suggestion_refreshed_at,
+                key_people, related_meeting, user_notes, waiting_activity, suggestion_refreshed_at,
                 created_at, updated_at)
             SELECT id, title, description, status, snoozed_until, parse_status,
                 raw_input, priority, due_date, committed_date, source_type, source_id,
                 source_url, source_snippet, coaching_text, action_type, skill_output,
-                key_people, related_meeting, user_notes, suggestion_refreshed_at,
+                key_people, related_meeting, user_notes, waiting_activity, suggestion_refreshed_at,
                 created_at, updated_at
             FROM tasks;
             DROP TABLE tasks;
@@ -149,6 +153,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     key_people      TEXT,
     related_meeting TEXT,
     user_notes      TEXT DEFAULT '',
+    waiting_activity TEXT,
     suggestion_refreshed_at TEXT,
     created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
     updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))

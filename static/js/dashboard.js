@@ -33,6 +33,7 @@ function init() {
     setupDropZones();
     startParsePoller();
     fetchSyncStatus();
+    startSyncWatcher();
 
     // Close people dropdown when clicking outside
     document.addEventListener('click', function(e) {
@@ -238,7 +239,8 @@ function taskMatchesSearch(task) {
         task.raw_input,
         task.user_notes,
         task.action_type,
-        task.skill_output
+        task.skill_output,
+        task.waiting_activity
     ];
     for (var i = 0; i < fields.length; i++) {
         if (fields[i] && fields[i].toLowerCase().indexOf(searchQuery) !== -1) {
@@ -306,6 +308,7 @@ function renderSection(sectionId, sectionTasks) {
         }
         var parseHtml = parseStatusIcon(task.parse_status);
         var enrichedHtml = task.skill_output ? '<span class="enriched-icon" title="Skill enriched">\u26A1</span>' : '';
+        var waitingIconHtml = waitingActivityIcon(task);
 
         // Build preview line: description, coaching, or key people
         var preview = task.description || task.coaching_text || '';
@@ -344,6 +347,7 @@ function renderSection(sectionId, sectionTasks) {
             + '<span class="task-id-badge">#' + task.id + '</span>'
             + '<span class="task-source-icon">' + sourceTypeIcon(task.source_type) + '</span>'
             + '<span class="task-title">' + escapeHtml(task.title) + '</span>'
+            + waitingIconHtml
             + dueHtml
             + '</div>'
             + previewHtml
@@ -391,9 +395,14 @@ function renderDetailPane(task) {
     // Header card with inline actions
     var html = '<div class="detail-card">'
         + '<div class="detail-header-row">'
-        + '<h2>' + escapeHtml(task.title) + '</h2>'
+        + '<h2 id="title-display-' + task.id + '">' + escapeHtml(task.title) + '</h2>'
+        + '<button class="btn-edit-inline" onclick="toggleTitleEdit(' + task.id + ')" title="Edit title">&#9998;</button>'
         + getHeaderActions(task)
         + '</div>'
+        + '<input type="text" id="title-edit-' + task.id + '" class="title-edit-input" style="display:none" '
+        + 'value="' + escapeHtml(task.title) + '" '
+        + 'onblur="saveTitle(' + task.id + ')" '
+        + 'onkeydown="if(event.key===\'Enter\'){this.blur();}">'
         + '<div class="detail-meta">'
         + '<span class="meta-item"><span class="status-badge ' + statusClass + '">' + escapeHtml(task.status) + '</span></span>'
         + '<span class="meta-item">' + prioritySelector(task) + '</span>'
@@ -433,6 +442,11 @@ function renderDetailPane(task) {
             + '<div class="detail-label">Key People</div>'
             + renderPeoplePills(task.key_people, task.id)
             + '</div>';
+    }
+
+    // Waiting Activity Check (between Key People and Notes)
+    if (task.status === 'waiting') {
+        html += renderWaitingActivityCard(task);
     }
 
     // User Notes
@@ -563,8 +577,8 @@ function renderPeoplePills(keyPeople, taskId) {
 
         html += '<div class="person-pill-wrapper" id="wrapper-' + pillId + '">';
 
-        // Pill
-        html += '<div class="person-pill' + (hasAlts ? ' has-alternatives' : '') + '" '
+        // Pill — always clickable (dropdown always available for remove)
+        html += '<div class="person-pill has-alternatives" '
             + 'onclick="event.stopPropagation(); togglePeopleDropdown(\'' + pillId + '\')">'
             + '<span class="person-pill-avatar">' + getInitials(person.name) + '</span>'
             + '<span>' + escapeHtml(person.name) + '</span>';
@@ -573,9 +587,9 @@ function renderPeoplePills(keyPeople, taskId) {
         }
         html += '</div>';
 
-        // Alternatives dropdown
+        // Dropdown — always present
+        html += '<div class="alternatives-dropdown" id="dropdown-' + pillId + '">';
         if (hasAlts) {
-            html += '<div class="alternatives-dropdown" id="dropdown-' + pillId + '">';
             html += '<div class="alternatives-header">Did you mean?</div>';
 
             // Current selection (highlighted)
@@ -596,9 +610,16 @@ function renderPeoplePills(keyPeople, taskId) {
                     + '<div class="alt-detail">' + escapeHtml([alt.email, alt.role].filter(Boolean).join(' \u00b7 ')) + '</div>'
                     + '</div></div>';
             });
-
-            html += '</div>';
         }
+
+        // Remove option
+        html += '<div class="alternative-item remove-person" '
+            + 'onclick="event.stopPropagation(); removePerson(' + taskId + ', ' + idx + ')">'
+            + '<div class="alt-avatar remove-avatar">\u00d7</div>'
+            + '<div class="alt-info"><div class="alt-name remove-label">Remove person</div></div>'
+            + '</div>';
+
+        html += '</div>';
 
         html += '</div>';
     });
@@ -689,6 +710,35 @@ function selectPerson(taskId, personIdx, altIdx) {
         }
     })
     .catch(function(err) { console.error('Failed to update person:', err); });
+
+    closeAllDropdowns();
+}
+
+function removePerson(taskId, personIdx) {
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (!task || !task.key_people) return;
+
+    var people = parsePeople(task.key_people);
+    if (personIdx < 0 || personIdx >= people.length) return;
+
+    people.splice(personIdx, 1);
+    var newKeyPeople = people.length ? JSON.stringify(people) : '';
+
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_people: newKeyPeople })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderDetailPane(data.task);
+            renderTaskList();
+        }
+    })
+    .catch(function(err) { console.error('Failed to remove person:', err); });
 
     closeAllDropdowns();
 }
@@ -883,6 +933,54 @@ function updateActionType(taskId, value) {
         }
     })
     .catch(function(err) { console.error('Failed to update action type:', err); });
+}
+
+// ── Editable Title ────────────────────────────────────────────────────
+function toggleTitleEdit(taskId) {
+    var display = document.getElementById('title-display-' + taskId);
+    var edit = document.getElementById('title-edit-' + taskId);
+    if (!display || !edit) return;
+
+    if (edit.style.display === 'none') {
+        display.style.display = 'none';
+        edit.style.display = 'block';
+        edit.focus();
+        edit.select();
+    } else {
+        edit.style.display = 'none';
+        display.style.display = '';
+    }
+}
+
+function saveTitle(taskId) {
+    var edit = document.getElementById('title-edit-' + taskId);
+    if (!edit) return;
+
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    var newTitle = edit.value.trim();
+    var oldTitle = task ? (task.title || '') : '';
+
+    var display = document.getElementById('title-display-' + taskId);
+    if (display) display.style.display = '';
+    edit.style.display = 'none';
+
+    if (!newTitle || newTitle === oldTitle) return;
+
+    fetch('/api/tasks/' + taskId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.task) {
+            var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+            if (idx >= 0) tasks[idx] = data.task;
+            renderTaskList();
+            renderDetailPane(data.task);
+        }
+    })
+    .catch(function(err) { console.error('Failed to save title:', err); });
 }
 
 // ── Editable Description ──────────────────────────────────────────────
@@ -1337,6 +1435,197 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// ── Waiting Activity ───────────────────────────────────────────────────
+function parseWaitingActivity(task) {
+    if (!task.waiting_activity) return null;
+    try { return JSON.parse(task.waiting_activity); } catch (e) { return null; }
+}
+
+function waitingActivityIcon(task) {
+    if (task.status !== 'waiting') return '';
+    var activity = parseWaitingActivity(task);
+    if (!activity) return '';
+    var icons = {
+        no_activity: '\uD83D\uDCA4',       // sleeping face
+        activity_detected: '\uD83D\uDCAC',  // speech bubble
+        may_be_resolved: '\u2705'           // checkmark
+    };
+    var tooltips = {
+        no_activity: 'No response \u2014 checked ' + timeAgo(activity.checked_at),
+        activity_detected: 'Activity detected \u2014 ' + truncate(activity.summary, 60),
+        may_be_resolved: 'May be resolved \u2014 ' + truncate(activity.summary, 60)
+    };
+    var icon = icons[activity.status] || '';
+    var tooltip = tooltips[activity.status] || '';
+    if (!icon) return '';
+    return '<span class="waiting-activity-icon activity-status-' + activity.status + '" title="' + escapeHtml(tooltip) + '">' + icon + '</span>';
+}
+
+function renderWaitingActivityCard(task) {
+    var activity = parseWaitingActivity(task);
+    if (!activity) {
+        if (task.status === 'waiting') {
+            return '<div class="waiting-activity-card">'
+                + '<div class="detail-label">Activity Check</div>'
+                + '<div class="waiting-activity-body">'
+                + '<span class="waiting-activity-status">Not checked yet</span>'
+                + '<button class="btn btn-sm" id="check-now-btn" onclick="requestWaitingCheckSingle(' + task.id + ')" style="margin-left:auto">Check Now</button>'
+                + '</div>'
+                + '</div>';
+        }
+        return '';
+    }
+    var icons = { no_activity: '\uD83D\uDCA4', activity_detected: '\uD83D\uDCAC', may_be_resolved: '\u2705' };
+    var labels = { no_activity: 'No activity', activity_detected: 'Activity detected', may_be_resolved: 'May be resolved' };
+    var icon = icons[activity.status] || '';
+    var label = labels[activity.status] || activity.status;
+
+    return '<div class="waiting-activity-card">'
+        + '<div class="detail-label">Activity Check</div>'
+        + '<div class="waiting-activity-body">'
+        + '<span class="waiting-activity-status activity-status-' + activity.status + '">'
+        + icon + ' ' + escapeHtml(label)
+        + '</span>'
+        + '<button class="btn btn-sm" id="check-now-btn" onclick="requestWaitingCheckSingle(' + task.id + ')" style="margin-left:auto">Check Now</button>'
+        + '</div>'
+        + '<div class="waiting-activity-summary">' + escapeHtml(activity.summary) + '</div>'
+        + '<div class="waiting-activity-checked">Checked ' + timeAgo(activity.checked_at) + '</div>'
+        + '</div>';
+}
+
+var _waitingCheckPollTimer = null;
+
+function requestWaitingCheck() {
+    var btn = document.getElementById('waiting-check-btn');
+    if (btn && btn.classList.contains('syncing')) return;
+    if (btn) {
+        btn.classList.add('syncing');
+        btn.title = 'Checking activity...';
+    }
+
+    fetch('/api/sync-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ waiting_check: true })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            _startWaitingCheckPoll();
+        } else {
+            if (btn) {
+                btn.classList.remove('syncing');
+                btn.title = 'Check for activity from key people';
+            }
+        }
+    })
+    .catch(function(err) {
+        if (btn) {
+            btn.classList.remove('syncing');
+            btn.title = 'Check for activity from key people';
+        }
+        console.error('Waiting check request failed:', err);
+    });
+}
+
+function requestWaitingCheckSingle(taskId) {
+    var checkBtn = document.getElementById('check-now-btn');
+    if (checkBtn) {
+        checkBtn.disabled = true;
+        checkBtn.textContent = 'Checking\u2026';
+    }
+    requestWaitingCheck();
+}
+
+function refreshAllWaiting() {
+    var btn = document.getElementById('waiting-refresh-btn');
+    if (btn && btn.classList.contains('syncing')) return;
+    if (btn) {
+        btn.classList.add('syncing');
+        btn.title = 'Refreshing waiting tasks...';
+    }
+
+    var waitingTasks = tasks.filter(function(t) { return t.status === 'waiting'; });
+    if (!waitingTasks.length) {
+        if (btn) {
+            btn.classList.remove('syncing');
+            btn.title = 'Refresh all waiting tasks with AI';
+        }
+        return;
+    }
+
+    // Trigger refresh on each waiting task
+    var promises = waitingTasks.map(function(t) {
+        return fetch('/api/tasks/' + t.id + '/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(function(res) { return res.json(); });
+    });
+
+    Promise.all(promises).then(function(results) {
+        results.forEach(function(data) {
+            if (data.task) {
+                var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+                if (idx >= 0) tasks[idx] = data.task;
+            }
+        });
+        renderTaskList();
+        if (selectedTaskId) {
+            var sel = tasks.find(function(t) { return t.id === selectedTaskId; });
+            if (sel) renderDetailPane(sel);
+        }
+        if (btn) {
+            btn.classList.remove('syncing');
+            btn.title = 'Refresh all waiting tasks with AI';
+        }
+    }).catch(function(err) {
+        if (btn) {
+            btn.classList.remove('syncing');
+            btn.title = 'Refresh all waiting tasks with AI';
+        }
+        console.error('Refresh all waiting failed:', err);
+    });
+}
+
+function _startWaitingCheckPoll() {
+    if (_waitingCheckPollTimer) return;
+    _waitingCheckPollTimer = setInterval(function() {
+        fetch('/api/runner-status')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (!data['waiting-check']) {
+                    // Finished
+                    _stopWaitingCheckPoll();
+                    var btn = document.getElementById('waiting-check-btn');
+                    if (btn) {
+                        btn.classList.remove('syncing');
+                        btn.title = 'Check for activity from key people';
+                    }
+                    // Re-fetch tasks and refresh detail pane
+                    fetch('/api/tasks')
+                        .then(function(res) { return res.json(); })
+                        .then(function(taskData) {
+                            tasks = taskData.tasks || [];
+                            renderTaskList();
+                            if (selectedTaskId) {
+                                var sel = tasks.find(function(t) { return t.id === selectedTaskId; });
+                                if (sel) renderDetailPane(sel);
+                            }
+                        })
+                        .catch(function() { fetchTasks(); });
+                }
+            })
+            .catch(function() {});
+    }, 5000);
+}
+
+function _stopWaitingCheckPoll() {
+    if (_waitingCheckPollTimer) {
+        clearInterval(_waitingCheckPollTimer);
+        _waitingCheckPollTimer = null;
+    }
+}
+
 // ── Utilities ──────────────────────────────────────────────────────────
 function timeAgo(isoString) {
     if (!isoString) return 'never';
@@ -1594,6 +1883,41 @@ function _stopFastPoll() {
         clearInterval(_syncPollTimer);
         _syncPollTimer = null;
     }
+}
+
+// ── Background Sync Watcher ────────────────────────────────────────────
+// Polls sync status every 30s to detect periodic syncs completing in the
+// background (the fast-poll only runs after a manual sync click).
+var _syncWatcherTimer = null;
+
+function startSyncWatcher() {
+    _syncWatcherTimer = setInterval(function() {
+        // Skip if fast-poll is already running (manual sync in progress)
+        if (_syncPollTimer) return;
+        fetch('/api/sync-status')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                // Detect sync running → start fast poll to track it
+                if (data.sync_running) {
+                    var btn = document.getElementById('sync-btn');
+                    if (btn && !btn.classList.contains('syncing')) {
+                        btn.classList.add('syncing');
+                    }
+                    _startFastPoll();
+                    return;
+                }
+                // Detect new sync completed since last known time
+                if (data.last_sync && data.last_sync.synced_at) {
+                    if (lastSyncTime && data.last_sync.synced_at !== lastSyncTime) {
+                        fetchTasks();
+                    }
+                    lastSyncTime = data.last_sync.synced_at;
+                    var statusText = document.getElementById('sync-status-text');
+                    if (statusText) statusText.textContent = timeAgo(lastSyncTime);
+                }
+            })
+            .catch(function() {});
+    }, 30000);
 }
 
 function toggleAutoSync(enabled) {

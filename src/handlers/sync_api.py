@@ -66,6 +66,14 @@ class SyncStatusHandler(tornado.web.RequestHandler):
             }))
             return
 
+        # On-demand waiting activity check
+        if body.get("waiting_check"):
+            result = run_claude("/waiting-check", label="waiting-check")
+            if not result["ok"] and "already running" not in result["message"].lower():
+                self.set_status(500)
+            self.write(json.dumps(result))
+            return
+
         # Manual sync trigger (existing behavior)
         result = run_sync()
         if not result["ok"] and "already running" not in result["message"].lower():

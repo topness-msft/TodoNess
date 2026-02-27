@@ -24,12 +24,19 @@ STATIC_DIR = BASE_DIR.parent / "static"
 
 SYNC_INTERVAL_MS = 30 * 60 * 1000  # 30 minutes
 UNSNOOZE_INTERVAL_MS = 60 * 1000  # 60 seconds
+WAITING_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000  # 4 hours
 
 
 def _periodic_sync():
     """Called every 30 minutes to launch `claude -p /todo-refresh`."""
     result = run_claude("/todo-refresh", label="sync")
     logger.info(f"Periodic sync: {result['message']}")
+
+
+def _check_waiting():
+    """Called every 4 hours to check activity on waiting tasks."""
+    result = run_claude("/waiting-check", label="waiting-check")
+    logger.info(f"Waiting check: {result['message']}")
 
 
 def _check_snoozed():
@@ -90,6 +97,11 @@ def main():
     unsnooze_callback = tornado.ioloop.PeriodicCallback(_check_snoozed, UNSNOOZE_INTERVAL_MS)
     unsnooze_callback.start()
     logger.info("Snooze watcher enabled (every 60s)")
+
+    # Waiting activity check every 4 hours
+    waiting_callback = tornado.ioloop.PeriodicCallback(_check_waiting, WAITING_CHECK_INTERVAL_MS)
+    waiting_callback.start()
+    logger.info("Waiting activity checker enabled (every 4 hr)")
 
     tornado.ioloop.IOLoop.current().start()
 

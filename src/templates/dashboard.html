@@ -66,6 +66,12 @@
                         <span class="section-toggle" id="toggle-waiting">&#9656;</span>
                         <span class="section-title">Waiting On Others</span>
                         <span class="section-count" id="count-waiting">0</span>
+                        <button id="waiting-check-btn" class="sync-btn-inline" onclick="event.stopPropagation(); requestWaitingCheck()" title="Check for activity from key people">
+                            <span class="sync-icon" id="waiting-check-icon">&#128269;</span>
+                        </button>
+                        <button id="waiting-refresh-btn" class="sync-btn-inline" onclick="event.stopPropagation(); refreshAllWaiting()" title="Refresh all waiting tasks with AI">
+                            <span class="sync-icon" id="waiting-refresh-icon">&#8635;</span>
+                        </button>
                     </div>
                     <div class="section-body collapsed" id="body-waiting"></div>
                 </div>

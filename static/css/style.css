@@ -980,6 +980,35 @@ html, body {
     background: #ebf3fc;
 }
 
+/* ── Remove Person Option ─────────────────────────────────────────── */
+.alternative-item.remove-person {
+    border-top: 1px solid #f0f0f0;
+}
+
+.alternative-item.remove-person:hover {
+    background: #fdf3f4;
+}
+
+.remove-avatar {
+    background: #e0e0e0 !important;
+    color: #9e9e9e !important;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+}
+
+.alternative-item.remove-person:hover .remove-avatar {
+    background: #bc2f32 !important;
+    color: #fff !important;
+}
+
+.remove-label {
+    color: #9e9e9e !important;
+}
+
+.alternative-item.remove-person:hover .remove-label {
+    color: #bc2f32 !important;
+}
+
 /* ── User Notes ─────────────────────────────────────────────────────── */
 .notes-textarea {
     width: 100%;
@@ -1300,6 +1329,21 @@ html, body {
 .btn-edit-inline:hover {
     background: #ebf3fc;
     color: #0f6cbd;
+}
+
+/* ── Title Edit Input ─────────────────────────────────────────────── */
+.title-edit-input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #0f6cbd;
+    border-radius: 6px;
+    font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #242424;
+    outline: none;
+    box-shadow: 0 0 0 1px #0f6cbd;
+    margin-bottom: 10px;
 }
 
 /* ── Description Edit Textarea ────────────────────────────────────── */
@@ -1683,6 +1727,45 @@ html, body {
     margin-left: 4px;
     white-space: nowrap;
     vertical-align: middle;
+}
+
+/* ── Waiting Activity ──────────────────────────────────────────────── */
+.waiting-activity-icon {
+    flex-shrink: 0;
+    font-size: 14px;
+    margin-left: 4px;
+    cursor: default;
+}
+
+.waiting-activity-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.1);
+    padding: 16px 20px;
+}
+
+.waiting-activity-body {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.waiting-activity-status {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.waiting-activity-summary {
+    font-size: 13px;
+    color: #424242;
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.waiting-activity-checked {
+    font-size: 11px;
+    color: #9e9e9e;
+    margin-top: 4px;
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
