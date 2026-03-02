@@ -1,6 +1,7 @@
 """Tornado application entry point for TodoNess."""
 
 import logging
+import os
 import sys
 import tornado.ioloop
 import tornado.web
@@ -76,8 +77,28 @@ def make_app() -> tornado.web.Application:
     return app
 
 
-def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8766
+def setup_logging(log_file=None):
+    """Configure logging. If log_file is set, logs to file; otherwise stderr."""
+    handlers = []
+    if log_file:
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        handlers.append(logging.FileHandler(log_file))
+    else:
+        handlers.append(logging.StreamHandler())
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+        handlers=handlers,
+    )
+
+
+def start_server(port=8766):
+    """Initialize DB, create app, register periodic callbacks, and start listening.
+
+    Returns (app, ioloop) so the caller can manage the lifecycle.
+    Does NOT start the IOLoop — call ioloop.start() yourself, or use main().
+    """
     conn = get_connection()
     init_db(conn)
     conn.close()
@@ -103,7 +124,15 @@ def main():
     waiting_callback.start()
     logger.info("Waiting activity checker enabled (every 4 hr)")
 
-    tornado.ioloop.IOLoop.current().start()
+    return app, tornado.ioloop.IOLoop.current()
+
+
+def main():
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8766
+    log_file = os.environ.get("TODONESS_LOG_FILE")
+    setup_logging(log_file)
+    _app, ioloop = start_server(port)
+    ioloop.start()
 
 
 if __name__ == "__main__":

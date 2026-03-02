@@ -57,4 +57,27 @@ Tornado Web Server (localhost:8766)
   |-- reads SQLite, serves dashboard + REST API + WebSocket
 ```
 
-Zero external dependencies beyond Python's standard library.
+## Run at Startup (Windows)
+
+TodoNess can run as a background app with a system tray icon that starts automatically at logon.
+
+```bash
+# Install dependencies and register startup task
+python scripts/install_startup.py
+
+# To remove from startup
+python scripts/uninstall_startup.py
+```
+
+The tray icon provides:
+- **Double-click** to open the dashboard
+- **Sync Now** to trigger a manual M365 scan
+- **Stop & Exit** to shut down
+
+Logs are written to `data/todoness.log`. Requires `pystray` and `Pillow` (installed automatically by the install script).
+
+## Dependencies
+
+Core app: zero external dependencies beyond Python's standard library.
+
+Tray launcher (optional): `pystray`, `Pillow`.

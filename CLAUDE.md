@@ -25,7 +25,7 @@ WorkIQ queries happen inside Claude Code commands only. The Tornado server never
 ## Key Files
 - `src/db.py` — SQLite schema, connection management
 - `src/models.py` — Task CRUD, lifecycle (promote/dismiss/complete/start), context, sync log
-- `src/app.py` — Tornado routes, entry point (port 8766)
+- `src/app.py` — Tornado routes, entry point (port 8766), `start_server()` for embedded use
 - `src/handlers/task_api.py` — REST API: /api/tasks, /api/tasks/<id>, /api/stats
 - `src/handlers/task_actions.py` — POST /api/tasks/<id>/action
 - `src/handlers/ws.py` — WebSocket at /ws for live updates
@@ -34,6 +34,9 @@ WorkIQ queries happen inside Claude Code commands only. The Tornado server never
 - `src/services/suggestion_engine.py` — Deduplication logic (source_id composite keys)
 - `src/services/claude_runner.py` — Shared `claude -p` subprocess manager (label-based dedup)
 - `src/services/refresh_scheduler.py` — Adaptive refresh intervals
+- `scripts/todoness_tray.pyw` — System tray launcher (runs server in background thread)
+- `scripts/install_startup.py` — Register TodoNess as a Windows logon startup task
+- `scripts/uninstall_startup.py` — Remove startup task and stop running tray process
 
 ## Commands
 | Command | Purpose | Uses WorkIQ? |
@@ -75,8 +78,28 @@ unparsed → queued → parsing → parsed
 7. Log to sync_log with result summary JSON
 
 ## Running
+
+### Console mode
 ```bash
-# Start the TodoNess dashboard
+# Start the TodoNess dashboard (foreground, logs to stderr)
 python -m src.app 8766
 # Open http://localhost:8766
 ```
+
+### System tray mode (Windows)
+```bash
+# Launch via pythonw (no console window, logs to data/todoness.log)
+pythonw scripts/todoness_tray.pyw
+```
+The tray icon provides "Open Dashboard", "Sync Now", and "Stop & Exit" menu items.
+Single-instance guard via `data/todoness.pid`.
+
+### Start at Windows logon
+```bash
+# Install as a Windows Task Scheduler task (runs at logon)
+python scripts/install_startup.py
+
+# Remove startup task and stop running instance
+python scripts/uninstall_startup.py
+```
+The installer registers a scheduled task named "TodoNess" that runs `pythonw scripts/todoness_tray.pyw` at logon. It also installs `pystray` and `Pillow` if missing.
