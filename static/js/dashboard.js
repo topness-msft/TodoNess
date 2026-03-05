@@ -320,6 +320,15 @@ function renderSection(sectionId, sectionTasks) {
     var count = document.getElementById('count-' + sectionId);
     count.textContent = sectionTasks.length;
 
+    // Sort: priority ASC, then created_at DESC (matches API ORDER BY)
+    sectionTasks.sort(function(a, b) {
+        var pa = a.priority || 3, pb = b.priority || 3;
+        if (pa !== pb) return pa - pb;
+        // Descending by created_at (newer first)
+        var ca = a.created_at || '', cb = b.created_at || '';
+        return ca < cb ? 1 : ca > cb ? -1 : 0;
+    });
+
     var html = '';
     sectionTasks.forEach(function(task) {
         var selected = task.id === selectedTaskId ? ' selected' : '';
@@ -443,12 +452,13 @@ function renderDetailPane(task) {
         + '<span class="meta-item">' + actionTypeSelector(task) + '</span>'
         + '<span class="meta-item">' + parseStatusBadge(task.parse_status, task.id) + '</span>'
         + (function() {
+            var sa = parseWaitingActivity(task);
+            if (sa && sa.status === 'out_of_office') {
+                var oofName = getOofPersonFirstName(task);
+                var dateStr = sa.return_date ? formatOofDate(sa.return_date) : 'unknown';
+                return '<span class="meta-item"><span class="snooze-detail-badge snooze-oof-badge">Waiting for ' + escapeHtml(oofName) + ' (OOO until ' + escapeHtml(dateStr) + ')</span></span>';
+            }
             if (task.status === 'snoozed' && task.snoozed_until) {
-                var sa = parseWaitingActivity(task);
-                if (sa && sa.status === 'out_of_office') {
-                    var dateStr = sa.return_date ? formatOofDate(sa.return_date) : 'unknown';
-                    return '<span class="meta-item"><span class="snooze-detail-badge snooze-oof-badge">Waiting for OOO return \u2014 ' + escapeHtml(dateStr) + '</span></span>';
-                }
                 return '<span class="meta-item"><span class="snooze-detail-badge">Snoozed until ' + formatSnoozeTime(task.snoozed_until) + '</span></span>';
             }
             return '';
