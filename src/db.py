@@ -47,8 +47,9 @@ def _migrate(conn: sqlite3.Connection):
                                     CHECK (status IN ('suggested','active','in_progress','waiting','snoozed','completed','dismissed','deleted')),
                 snoozed_until   TEXT,
                 parse_status    TEXT NOT NULL DEFAULT 'parsed'
-                                    CHECK (parse_status IN ('unparsed','queued','parsing','parsed')),
+                                    CHECK (parse_status IN ('unparsed','queued','parsing','parsed','error')),
                 raw_input       TEXT,
+                error_message   TEXT,
                 priority        INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
                 due_date        TEXT,
                 committed_date  TEXT,
@@ -89,6 +90,70 @@ def _migrate(conn: sqlite3.Connection):
             CREATE INDEX IF NOT EXISTS idx_tasks_parse_status ON tasks(parse_status);
             CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
         """)
+
+    # Migrate tasks table to support 'error' parse_status and error_message column
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+    if "error_message" not in cols:
+        task_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'"
+        ).fetchone()
+        if task_sql and "'error'" not in (task_sql[0] or ""):
+            # Need table swap to update CHECK constraint
+            conn.executescript("""
+                CREATE TABLE tasks_new (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title           TEXT NOT NULL,
+                    description     TEXT DEFAULT '',
+                    status          TEXT NOT NULL DEFAULT 'active'
+                                        CHECK (status IN ('suggested','active','in_progress','waiting','snoozed','completed','dismissed','deleted')),
+                    snoozed_until   TEXT,
+                    parse_status    TEXT NOT NULL DEFAULT 'parsed'
+                                        CHECK (parse_status IN ('unparsed','queued','parsing','parsed','error')),
+                    raw_input       TEXT,
+                    error_message   TEXT,
+                    priority        INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
+                    due_date        TEXT,
+                    committed_date  TEXT,
+                    source_type     TEXT DEFAULT 'manual'
+                                        CHECK (source_type IN ('email','meeting','chat','manual')),
+                    source_id       TEXT,
+                    source_url      TEXT,
+                    source_snippet  TEXT,
+                    coaching_text   TEXT,
+                    action_type     TEXT DEFAULT 'general'
+                                        CHECK (action_type IN ('schedule-meeting','respond-email','review-document','follow-up','awaiting-response','prepare','general')),
+                    skill_output    TEXT,
+                    key_people      TEXT,
+                    related_meeting TEXT,
+                    user_notes      TEXT DEFAULT '',
+                    waiting_activity TEXT,
+                    suggestion_refreshed_at TEXT,
+                    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+                    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+                );
+                INSERT INTO tasks_new (id, title, description, status, snoozed_until, parse_status,
+                    raw_input, priority, due_date, committed_date, source_type, source_id,
+                    source_url, source_snippet, coaching_text, action_type, skill_output,
+                    key_people, related_meeting, user_notes, waiting_activity, suggestion_refreshed_at,
+                    created_at, updated_at)
+                SELECT id, title, description, status, snoozed_until, parse_status,
+                    raw_input, priority, due_date, committed_date, source_type, source_id,
+                    source_url, source_snippet, coaching_text, action_type, skill_output,
+                    key_people, related_meeting, user_notes, waiting_activity, suggestion_refreshed_at,
+                    created_at, updated_at
+                FROM tasks;
+                DROP TABLE tasks;
+                ALTER TABLE tasks_new RENAME TO tasks;
+            """)
+            conn.executescript("""
+                CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+                CREATE INDEX IF NOT EXISTS idx_tasks_parse_status ON tasks(parse_status);
+                CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
+            """)
+        else:
+            # CHECK constraint already has 'error', just add the column
+            conn.execute("ALTER TABLE tasks ADD COLUMN error_message TEXT")
+            conn.commit()
 
     # Migrate sync_log to support 'full_scan' sync_type
     sync_types = [
@@ -136,8 +201,9 @@ CREATE TABLE IF NOT EXISTS tasks (
                         CHECK (status IN ('suggested','active','in_progress','waiting','snoozed','completed','dismissed','deleted')),
     snoozed_until   TEXT,
     parse_status    TEXT NOT NULL DEFAULT 'parsed'
-                        CHECK (parse_status IN ('unparsed','queued','parsing','parsed')),
+                        CHECK (parse_status IN ('unparsed','queued','parsing','parsed','error')),
     raw_input       TEXT,
+    error_message   TEXT,
     priority        INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
     due_date        TEXT,
     committed_date  TEXT,

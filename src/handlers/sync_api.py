@@ -10,7 +10,7 @@ import logging
 import tornado.web
 
 from ..models import get_last_sync
-from ..services.claude_runner import run_claude, is_running, get_status
+from ..services.claude_runner import run_claude, is_running, get_status, get_exit_info
 
 logger = logging.getLogger(__name__)
 
@@ -88,4 +88,9 @@ class RunnerStatusHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "application/json")
 
     def get(self):
-        self.write(json.dumps(get_status()))
+        running = get_status()
+        # Flat format for backward compat: {label: true, ...}
+        # Plus "completed" key with exit info for error tracking
+        result = dict(running)
+        result["_completed"] = get_exit_info()
+        self.write(json.dumps(result))

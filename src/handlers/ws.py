@@ -35,3 +35,12 @@ def broadcast(data: dict):
             dead.append(client)
     for client in dead:
         _clients.discard(client)
+
+
+def broadcast_error(task_id: int, error_message: str):
+    """Broadcast a parse_error event for a specific task."""
+    broadcast({
+        "type": "parse_error",
+        "task_id": task_id,
+        "error_message": error_message,
+    })
