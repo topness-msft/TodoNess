@@ -802,7 +802,7 @@ function replacePersonName(text, oldName, newName) {
     var oldFirst = oldName.split(' ')[0];
     var newFirst = newName.split(' ')[0];
     if (oldFirst !== oldName && oldFirst.length > 2) {
-        // Use word boundary: replace "Pratap" but not "Pratap" inside "PratapLadhani"
+        // Use word boundary: replace "Jane" but not "Jane" inside "JaneDoe"
         var re = new RegExp('\\b' + escapeRegex(oldFirst) + '\\b', 'g');
         result = result.replace(re, newFirst);
     }
@@ -1862,7 +1862,7 @@ function renderRichText(text, keyPeople) {
             replacements.push({ match: p.name, person: p });
         }
     });
-    // Sort longest first so "Pratap Ladhani" matches before "Pratap"
+    // Sort longest first so "Jane Doe" matches before "Jane"
     replacements.sort(function(a, b) { return b.match.length - a.match.length; });
 
     // Split text by matched names, replacing with inline pills

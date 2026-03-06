@@ -5,14 +5,14 @@ TodoNess is a local AI-powered task manager that integrates with Microsoft 365 v
 
 ## Technology Stack
 - **Runtime:** Python 3.11
-- **Web Framework:** Tornado 6.5
-- **Templating:** Jinja2 3.1.6
+- **Web Framework:** Tornado 6.4+
+- **Templating:** Jinja2 3.1+
 - **Database:** SQLite3 (WAL mode)
-- **Dependencies:** Zero external — all pre-installed
+- **Dependencies:** `tornado`, `jinja2` (see `requirements.txt`)
 
 ## Architecture
 ```
-Claude Code Commands (/todo-refresh, /todo-review)
+Claude Code Commands (/todo-refresh, /todo-add, /todo-parse, skills)
   ↕ calls WorkIQ MCP    ↕ writes SQLite
 SQLite DB (data/claudetodo.db)
   tasks | task_context | refresh_schedule | sync_log
@@ -45,6 +45,7 @@ WorkIQ queries happen inside Claude Code commands only. The Tornado server never
 | `/todo-parse` | Parse unparsed tasks from dashboard | Yes |
 | `/todo-refresh` | Full M365 scan: Teams/meetings + awaiting-response → suggested tasks | Yes |
 | `/todo-review` | Interactive review of tasks needing attention | Yes |
+| `/waiting-check` | Check for activity on waiting tasks | Yes |
 
 ## Skills
 - `respond-email` — Draft email response for email-sourced tasks
@@ -57,10 +58,11 @@ WorkIQ queries happen inside Claude Code commands only. The Tornado server never
 Four tables: `tasks`, `task_context`, `refresh_schedule`, `sync_log`. See `src/db.py` for full schema.
 
 ## Task Status Flow
-- **suggested** → active, waiting, dismissed, deleted
-- **active** → in_progress, waiting, completed, dismissed, deleted
-- **in_progress** → active, waiting, completed, deleted
-- **waiting** → active, in_progress, completed, deleted
+- **suggested** → active, waiting, snoozed, dismissed, deleted
+- **active** → in_progress, waiting, snoozed, completed, dismissed, deleted
+- **in_progress** → active, waiting, snoozed, completed, deleted
+- **waiting** → active, in_progress, snoozed, completed, deleted
+- **snoozed** → active, completed, dismissed, deleted
 - **completed** → active, deleted
 - **dismissed** → active, suggested, deleted
 

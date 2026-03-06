@@ -35,7 +35,7 @@ Extract: `key_people`, `user_notes`, `description`, `due_date`, `title`.
 Parse `key_people` as JSON. If it's empty or null, stop with:
 > "Task #[id] has no key people. Add people first, then run `/schedule-meeting [id]` again."
 
-Build a comma-separated list of full names from the key_people array (e.g. "Pratap Ladhani and John Wheat").
+Build a comma-separated list of full names from the key_people array (e.g. "Jane Doe and Alex Kim").
 
 ## Step 3: Query WorkIQ for shared calendar availability
 

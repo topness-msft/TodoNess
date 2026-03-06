@@ -9,9 +9,11 @@ dist/
 build/
 test-runs/
 .orchestrator/
-data/*.db
-data/*.db-wal
-data/*.db-shm
-data/.sync_*
-data/sync_output.log
 .dashboard_config
+
+# Runtime data — DB, logs, PID, test artifacts
+data/
+
+# User-specific files (contain local paths / permission grants)
+*.lnk
+.claude/settings.local.json

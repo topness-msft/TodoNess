@@ -37,7 +37,7 @@ Read the natural language text and infer ALL of the following:
 For each person mentioned, call `ask_work_iq` with: "Who is [name]? Give me the top 3-4 most likely matches with full name, email, and role."
 Pick the best match and store alternatives as JSON:
 ```json
-[{"name": "John Wheat", "email": "john.wheat@contoso.com", "role": "PM",
+[{"name": "Alex Kim", "email": "alex.kim@contoso.com", "role": "PM",
   "alternatives": [
     {"name": "John Smith", "email": "john.smith@contoso.com", "role": "Engineer"},
     {"name": "John Adams", "email": "john.adams@contoso.com", "role": "Designer"}

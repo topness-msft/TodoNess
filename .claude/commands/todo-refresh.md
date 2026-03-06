@@ -47,7 +47,7 @@ Call `ask_work_iq` with ONE query for Teams messages and meeting action items. W
 > **Note:** Email scan is disabled. WorkIQ enterprise search cannot reliably scope to Inbox folder, detect flagged status, or filter by folder location. Re-enable when Graph MCP or improved email access is available.
 
 ```
-What Teams messages and meeting action items need my attention or action? Include: (1) Teams messages from the last {days_since} days directed at me by name or @mentioning me that I haven't responded to, (2) action items from meetings in the last {days_since} days assigned to me or that I committed to. For each item, return it as a structured task suggestion with ALL of these fields: 1. **Task title**: A clean imperative action describing WHAT I NEED TO DO (e.g. "Schedule workshop walkthrough with Steve"). Not the message topic — describe the action. 2. **Description**: 2-3 sentences of context: what was the original ask, current state, what specifically needs to happen next. 3. **Source type**: teams or meeting. 4. **Key people**: For each person involved, give their FULL resolved name and email address (e.g. "Phil Topness, phil.topness@microsoft.com"). Resolve aliases and short names to full directory names. 5. **Priority**: P1 (urgent/deadline today), P2 (time-sensitive), P3 (normal), P4 (low/FYI). 6. **Original subject or topic**: The root subject (strip Re:/Fwd: prefixes). 7. **Date**: When the item was sent/occurred. 8. **Action type**: One of: respond-email, follow-up, schedule-meeting, prepare, general. Format each item as a numbered task with clear field labels.
+What Teams messages and meeting action items need my attention or action? Include: (1) Teams messages from the last {days_since} days directed at me by name or @mentioning me that I haven't responded to, (2) action items from meetings in the last {days_since} days assigned to me or that I committed to. For each item, return it as a structured task suggestion with ALL of these fields: 1. **Task title**: A clean imperative action describing WHAT I NEED TO DO (e.g. "Schedule workshop walkthrough with Alex"). Not the message topic — describe the action. 2. **Description**: 2-3 sentences of context: what was the original ask, current state, what specifically needs to happen next. 3. **Source type**: teams or meeting. 4. **Key people**: For each person involved, give their FULL resolved name and email address (e.g. "Jane Doe, jane.doe@contoso.com"). Resolve aliases and short names to full directory names. 5. **Priority**: P1 (urgent/deadline today), P2 (time-sensitive), P3 (normal), P4 (low/FYI). 6. **Original subject or topic**: The root subject (strip Re:/Fwd: prefixes). 7. **Date**: When the item was sent/occurred. 8. **Action type**: One of: respond-email, follow-up, schedule-meeting, prepare, general. Format each item as a numbered task with clear field labels.
 ```
 
 ## Step 2b: WorkIQ scan (Awaiting Response)
@@ -55,7 +55,7 @@ What Teams messages and meeting action items need my attention or action? Includ
 Call `ask_work_iq` with a separate query focused on outbound messages where I'm waiting for a reply. Use `awaiting-response` as the action_type.
 
 ```
-What messages or emails have I SENT in the last {days_since} days that contain a question, request, or ask where the recipient hasn't responded yet? Only include items where I am clearly waiting for a response — not messages I sent that were purely informational. For each item, return it as a structured task suggestion with ALL of these fields: 1. **Task title**: A clean imperative action (e.g. "Follow up with Sarah on budget approval"). 2. **Description**: 2-3 sentences: what I asked, who I'm waiting on, when I sent it. 3. **Source type**: email, teams, or meeting. 4. **Key people**: For each person involved, give their FULL resolved name and email address. 5. **Priority**: P3 (normal) or P4 (low) — these are lower urgency since I'm waiting, not being asked. 6. **Original subject or topic**: The root subject (strip Re:/Fwd: prefixes). 7. **Date**: When I sent the message. 8. **Action type**: awaiting-response. Format each item as a numbered task with clear field labels.
+What messages or emails have I SENT in the last {days_since} days that contain a question, request, or ask where the recipient hasn't responded yet? Only include items where I am clearly waiting for a response — not messages I sent that were purely informational. For each item, return it as a structured task suggestion with ALL of these fields: 1. **Task title**: A clean imperative action (e.g. "Follow up with Alex on budget approval"). 2. **Description**: 2-3 sentences: what I asked, who I'm waiting on, when I sent it. 3. **Source type**: email, teams, or meeting. 4. **Key people**: For each person involved, give their FULL resolved name and email address. 5. **Priority**: P3 (normal) or P4 (low) — these are lower urgency since I'm waiting, not being asked. 6. **Original subject or topic**: The root subject (strip Re:/Fwd: prefixes). 7. **Date**: When I sent the message. 8. **Action type**: awaiting-response. Format each item as a numbered task with clear field labels.
 ```
 
 ## Step 3: Validate and extract fields
@@ -66,7 +66,7 @@ For **each item** WorkIQ returned, classify into one of three tiers:
 
 | Tier | Description | Priority treatment |
 |------|-------------|-------------------|
-| **Direct** | Someone is asking ME (Phil Topness) specifically to do something | Keep WorkIQ's priority as-is |
+| **Direct** | Someone is asking ME specifically to do something | Keep WorkIQ's priority as-is |
 | **Group** | Assigned to a group/role I belong to (e.g. "Coaches", "AI team") | Downgrade by 1 level (P1→P2, P2→P3, etc., max P4) |
 | **Tangential** | I'm mentioned as context, CC'd, or action is for someone else | Set to P5 (Information) |
 
@@ -122,7 +122,7 @@ Query existing tasks from the same key person to check for semantic duplicates:
 ```python
 conn = sqlite3.connect('$PROJECT_ROOT/data/claudetodo.db')
 conn.row_factory = sqlite3.Row
-# Normalize sender: match both alias forms (e.g. saurabh.pant@ and spant@)
+# Normalize sender: match both alias forms (e.g. jane.doe@ and jdoe@)
 sender_lower = first_person_email.strip().lower()
 sender_prefix = sender_lower.split('@')[0]
 same_sender_tasks = conn.execute(

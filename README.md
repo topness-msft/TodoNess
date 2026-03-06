@@ -13,6 +13,9 @@ TodoNess scans your Teams messages, meetings, and flagged emails to surface acti
 ## Quick Start
 
 ```bash
+# Install dependencies
+pip install -r requirements.txt
+
 # Start the dashboard server
 python -m src.app
 
@@ -30,6 +33,7 @@ The dashboard runs as a local web server. AI features (scanning, parsing, skills
 | `/todo-parse` | Parse tasks added via the dashboard quick-add |
 | `/todo-refresh` | Scan M365 for new actionable items |
 | `/todo-review` | Review tasks needing attention |
+| `/waiting-check` | Check for activity on waiting tasks |
 
 Skills generate contextual drafts for individual tasks:
 
@@ -78,6 +82,6 @@ Logs are written to `data/todoness.log`. Requires `pystray` and `Pillow` (instal
 
 ## Dependencies
 
-Core app: zero external dependencies beyond Python's standard library.
+Core app: `tornado`, `jinja2` (see `requirements.txt`).
 
 Tray launcher (optional): `pystray`, `Pillow`.

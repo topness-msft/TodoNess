@@ -15,7 +15,7 @@ _TASK_OUTPUT_FORMAT = (
     "what specifically needs to happen next. "
     "3. **Source type**: email, teams, or meeting. "
     "4. **Key people**: For each person involved, give their FULL resolved name and email address "
-    "(e.g. 'Phil Topness, phil.topness@microsoft.com'). Resolve aliases and short names to full directory names. "
+    "(e.g. 'Jane Doe, jane.doe@contoso.com'). Resolve aliases and short names to full directory names. "
     "5. **Priority**: P1 (urgent/deadline today), P2 (time-sensitive), P3 (normal), P4 (low/FYI). "
     "6. **Original subject or topic**: The root subject (strip Re:/Fwd: prefixes). "
     "7. **Date**: When the item was sent/occurred. "

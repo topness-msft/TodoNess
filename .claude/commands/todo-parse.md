@@ -39,7 +39,7 @@ For coaching-only tasks, **skip Step 3** but first do **Step 2c** (incremental n
 Before regenerating coaching, scan the current `description` and `user_notes` for person names that are NOT already in `key_people`. To detect new names:
 
 1. Parse existing `key_people` JSON to get a set of already-resolved names (including alternatives).
-2. Scan `description` and `user_notes` for capitalized multi-word tokens that look like person names (e.g. "Sameer Bhangar", "Alice") that aren't in the resolved set.
+2. Scan `description` and `user_notes` for capitalized multi-word tokens that look like person names (e.g. "Alex Kim", "Sarah") that aren't in the resolved set.
 3. For each new name found, call `ask_work_iq` with "Who is [name]? Give me the top 3-4 most likely matches with full name, email, and role."
 4. Append newly resolved people to the existing `key_people` array (don't replace existing entries).
 5. Update the `key_people` column before proceeding to Step 3b.
@@ -50,7 +50,7 @@ This is additive — existing resolved people are preserved, and new names get r
 
 For each task's `raw_input`, use your intelligence to infer ALL of the following. Today's date is $CURRENT_DATE.
 
-- **title**: A clean, concise task title (imperative form, e.g. "Schedule meeting with Pratap by Wednesday")
+- **title**: A clean, concise task title (imperative form, e.g. "Schedule meeting with Jane by Wednesday")
 - **description**: A fuller description of what the task involves, including any implied sub-steps. Be helpful and specific.
 - **priority**: Integer 1-5 based on urgency cues:
   - 1 = urgent/ASAP/critical/blocker
@@ -61,7 +61,7 @@ For each task's `raw_input`, use your intelligence to infer ALL of the following
 - **due_date**: ISO date (YYYY-MM-DD) resolved from any time references. "Next Wednesday" → calculate from today. "End of week" → Friday. "Tomorrow" → tomorrow. null if none implied.
 - **key_people**: A JSON array of resolved people. For each name mentioned, call `ask_work_iq` with "Who is [name]? Give me the top 3-4 most likely matches with full name, email, and role." Pick the best match and store alternatives. Format:
   ```json
-  [{"name": "John Wheat", "email": "john.wheat@contoso.com", "role": "PM",
+  [{"name": "Alex Kim", "email": "alex.kim@contoso.com", "role": "PM",
     "alternatives": [
       {"name": "John Smith", "email": "john.smith@contoso.com", "role": "Engineer"},
       {"name": "John Adams", "email": "john.adams@contoso.com", "role": "Designer"}
@@ -70,7 +70,7 @@ For each task's `raw_input`, use your intelligence to infer ALL of the following
   Store as a JSON string in the `key_people` column. If WorkIQ can't resolve, store `[{"name": "John", "alternatives": []}]`.
 - **OOO check** (full parse only, not coaching-only re-parse): After resolving key_people, check if any key person is currently out of office. For the **first** (primary) person in key_people, call `ask_work_iq` with: "Check [full name]'s current presence and availability status. Are they showing as Out of Office in Teams or Outlook? Do they have an OOO status, automatic reply, or Out of Office presence set? Also check if I've received any recent automatic reply or OOO email from them. If they are OOO, when are they returning?" If they ARE out of office, set `waiting_activity` to: `{"status": "out_of_office", "return_date": "YYYY-MM-DD", "summary": "[OOO details]", "checked_at": "[now]"}` (use null for return_date if unknown). If they are NOT out of office, leave `waiting_activity` as null. This ensures the OOO badge shows immediately on the dashboard.
 - **source_type**: Do NOT change this field. Tasks entered via the dashboard are always 'manual'. Tasks created by /todo-refresh already have the correct source_type set from WorkIQ. Leave the existing value as-is.
-- **related_meeting**: If a meeting is mentioned, describe it. Use WorkIQ if helpful: call `ask_work_iq` with "What meetings do I have related to [topic]?" **Important:** After resolving people in the key_people step, always use their full resolved names (e.g. "Pratap Ladhani" not "Pratap") in all subsequent WorkIQ queries for more precise results.
+- **related_meeting**: If a meeting is mentioned, describe it. Use WorkIQ if helpful: call `ask_work_iq` with "What meetings do I have related to [topic]?" **Important:** After resolving people in the key_people step, always use their full resolved names (e.g. "Jane Doe" not "Jane") in all subsequent WorkIQ queries for more precise results.
 - **action_type**: Classify the task into one of these action types based on intent:
 
   | action_type | Infer when... |
@@ -97,7 +97,7 @@ Tailor coaching by action type:
 - **prepare**: List concrete prep steps, suggest materials to gather, reference related_meeting if set.
 - **general**: Break into 2-3 concrete next steps.
 
-**Important:** Always use full resolved names (e.g. "Pratap Ladhani" not "Pratap") in the coaching text so inline people pills render correctly in the dashboard. If `user_notes` contain context (agenda, constraints, preferences), weave that context into the coaching.
+**Important:** Always use full resolved names (e.g. "Jane Doe" not "Jane") in the coaching text so inline people pills render correctly in the dashboard. If `user_notes` contain context (agenda, constraints, preferences), weave that context into the coaching.
 
 ## Step 3c: Auto-generate skill output
 
@@ -204,7 +204,7 @@ Purpose: [what this message aims to accomplish]
 ```
 
 ### Guidelines (all action types)
-- Use resolved full names from `key_people` (e.g. "Pratap Ladhani" not "Pratap")
+- Use resolved full names from `key_people` (e.g. "Jane Doe" not "Jane")
 - If `user_notes` specify points, tone, or constraints, incorporate them
 - Do NOT include the `<<<SKILL_OUTPUT>>>` / `<<<END_SKILL_OUTPUT>>>` markers — those are only needed in standalone skill commands. Here the output goes directly into the `skill_output` variable for Step 4's DB write.
 - If the WorkIQ query returns no useful context (e.g. no email thread found), still generate a reasonable draft based on the task description and key_people — note that context was limited.

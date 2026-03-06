@@ -53,7 +53,7 @@ Date: [due_date or meeting date if known]
 Attendees: [key_people names and roles]
 
 Before the meeting:
-[ ] [Prep item 1 — e.g. "Review the latest Spark Tank deck"]
+[ ] [Prep item 1 — e.g. "Review the latest project deck"]
 [ ] [Prep item 2 — e.g. "Pull usage metrics from last workshop"]
 [ ] [Prep item 3]
 
