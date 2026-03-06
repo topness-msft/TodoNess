@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="app">
+    <!-- Top Bar -->
+    <header class="top-bar">
+        <div class="top-bar-left">
+            <img src="/static/img/icon.png" alt="TodoNess" class="app-icon">
+            <h1 class="app-title">TodoNess</h1>
+        </div>
+        <div class="top-bar-right">
+            <span class="shortcuts-hint">Shortcuts: ?</span>
+            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+                <span id="theme-icon">&#9790;</span>
+            </button>
+            <label class="auto-sync-toggle" title="Auto-sync every 30 min">
+                <input type="checkbox" id="auto-sync-checkbox" checked onchange="toggleAutoSync(this.checked)">
+                <span class="toggle-slider"></span>
+                <span class="auto-sync-label">Auto sync</span>
+            </label>
+            <span id="connection-status" class="connection-indicator disconnected">
+                <span class="connection-dot"></span>
+                <span class="connection-label">Connecting</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- Input Bar -->
+    <div class="input-bar">
+        <form id="add-task-form" class="input-bar-form" onsubmit="return false;">
+            <input type="text" id="task-input" class="task-input" placeholder="Add a task..." autocomplete="off">
+            <button type="submit" class="btn btn-primary" id="add-task-btn">Add</button>
+        </form>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Left Panel: Task List -->
+        <div class="left-panel">
+            <div class="search-bar">
+                <input type="text" id="search-input" class="search-input" placeholder="Filter tasks..." autocomplete="off" oninput="applySearchFilter()">
+            </div>
+            <div id="task-list" class="task-list">
+                <!-- Active Section -->
+                <div class="section" id="section-active">
+                    <div class="section-header" onclick="toggleSection('active')">
+                        <span class="section-toggle" id="toggle-active">&#9662;</span>
+                        <span class="section-title">Active</span>
+                        <span class="section-count" id="count-active">0</span>
+                    </div>
+                    <div class="section-body" id="body-active"></div>
+                </div>
+
+                <!-- Suggestions Section -->
+                <div class="section" id="section-suggested">
+                    <div class="section-header" onclick="toggleSection('suggested')">
+                        <span class="section-toggle" id="toggle-suggested">&#9662;</span>
+                        <span class="section-title">Suggestions</span>
+                        <span class="section-count" id="count-suggested">0</span>
+                        <button id="sync-btn" class="sync-btn-inline" onclick="event.stopPropagation(); requestSync()" title="Sync with M365">
+                            <span class="sync-icon" id="sync-icon">&#8635;</span>
+                        </button>
+                        <span id="sync-status-text" class="sync-status-text"></span>
+                    </div>
+                    <div class="section-body" id="body-suggested"></div>
+                </div>
+
+                <!-- Waiting On Others Section (collapsed by default) -->
+                <div class="section" id="section-waiting">
+                    <div class="section-header" onclick="toggleSection('waiting')">
+                        <span class="section-toggle" id="toggle-waiting">&#9656;</span>
+                        <span class="section-title">Waiting On Others</span>
+                        <span class="section-count" id="count-waiting">0</span>
+                        <button id="waiting-check-btn" class="sync-btn-inline" onclick="event.stopPropagation(); requestWaitingCheck()" title="Check for activity from key people">
+                            <span class="sync-icon" id="waiting-check-icon">&#128269;</span>
+                        </button>
+                        <button id="waiting-refresh-btn" class="sync-btn-inline" onclick="event.stopPropagation(); refreshAllWaiting()" title="Refresh all waiting tasks with AI">
+                            <span class="sync-icon" id="waiting-refresh-icon">&#8635;</span>
+                        </button>
+                    </div>
+                    <div class="section-body collapsed" id="body-waiting"></div>
+                </div>
+
+                <!-- Snoozed Section -->
+                <div class="section" id="section-snoozed">
+                    <div class="section-header" onclick="toggleSection('snoozed')">
+                        <span class="section-toggle" id="toggle-snoozed">&#9662;</span>
+                        <span class="section-title">Snoozed</span>
+                        <span class="section-count" id="count-snoozed">0</span>
+                    </div>
+                    <div class="section-body" id="body-snoozed"></div>
+                </div>
+
+                <!-- Completed Section (collapsed by default) -->
+                <div class="section" id="section-completed">
+                    <div class="section-header" onclick="toggleSection('completed')">
+                        <span class="section-toggle" id="toggle-completed">&#9656;</span>
+                        <span class="section-title">Completed</span>
+                        <span class="section-count" id="count-completed">0</span>
+                    </div>
+                    <div class="section-body collapsed" id="body-completed"></div>
+                </div>
+
+                <!-- Dismissed Section (collapsed by default) -->
+                <div class="section" id="section-dismissed">
+                    <div class="section-header" onclick="toggleSection('dismissed')">
+                        <span class="section-toggle" id="toggle-dismissed">&#9656;</span>
+                        <span class="section-title">Dismissed</span>
+                        <span class="section-count" id="count-dismissed">0</span>
+                    </div>
+                    <div class="section-body collapsed" id="body-dismissed"></div>
+                </div>
+
+                <!-- Deleted Section (collapsed by default) -->
+                <div class="section" id="section-deleted">
+                    <div class="section-header" onclick="toggleSection('deleted')">
+                        <span class="section-toggle" id="toggle-deleted">&#9656;</span>
+                        <span class="section-title">Deleted</span>
+                        <span class="section-count" id="count-deleted">0</span>
+                    </div>
+                    <div class="section-body collapsed" id="body-deleted"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Detail Pane -->
+        <div class="right-panel">
+            <div id="detail-pane" class="detail-pane">
+                <div class="empty-state">Select a task to view details</div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Keyboard Shortcuts Overlay -->
+<div class="shortcuts-overlay" id="shortcuts-overlay" onclick="if(event.target===this)closeShortcuts()">
+    <div class="shortcuts-modal">
+        <h3>Keyboard Shortcuts</h3>
+        <table>
+            <tr><th colspan="2">Navigation</th></tr>
+            <tr><td><kbd>j</kbd> / <kbd>&#8595;</kbd></td><td>Next task</td></tr>
+            <tr><td><kbd>k</kbd> / <kbd>&#8593;</kbd></td><td>Previous task</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Open task detail</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>Close detail / modal</td></tr>
+            <tr><td><kbd>Tab</kbd></td><td>Next section</td></tr>
+            <tr><th colspan="2" style="padding-top:12px">Actions (selected task)</th></tr>
+            <tr><td><kbd>c</kbd></td><td>Complete task</td></tr>
+            <tr><td><kbd>d</kbd></td><td>Dismiss task</td></tr>
+            <tr><td><kbd>s</kbd></td><td>Start / promote task</td></tr>
+            <tr><td><kbd>p</kbd></td><td>Promote suggestion</td></tr>
+            <tr><td><kbd>r</kbd></td><td>Refresh task</td></tr>
+            <tr><th colspan="2" style="padding-top:12px">Global</th></tr>
+            <tr><td><kbd>n</kbd> / <kbd>/</kbd></td><td>Focus quick-add input</td></tr>
+            <tr><td><kbd>?</kbd></td><td>Show this help</td></tr>
+        </table>
+    </div>
+</div>
+{% end %}

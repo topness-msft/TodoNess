@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.env
+node_modules/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+test-runs/
+.orchestrator/
+.dashboard_config
+
+# Runtime data — DB, logs, PID, test artifacts
+data/
+
+# User-specific files (contain local paths / permission grants)
+*.lnk
+.claude/settings.local.json
