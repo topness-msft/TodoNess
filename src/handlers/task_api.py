@@ -103,7 +103,7 @@ class TaskDetailHandler(tornado.web.RequestHandler):
         # Filter to allowed fields
         allowed = {
             "title", "description", "priority", "due_date", "committed_date",
-            "user_notes", "coaching_text", "skill_output", "key_people",
+            "user_notes", "coaching_text", "skill_output", "cowork_prompt", "key_people",
             "related_meeting", "source_type", "source_url", "source_snippet",
             "action_type", "is_quick_hit",
         }

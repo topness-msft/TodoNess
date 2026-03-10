@@ -155,6 +155,12 @@ def _migrate(conn: sqlite3.Connection):
             conn.execute("ALTER TABLE tasks ADD COLUMN error_message TEXT")
             conn.commit()
 
+    # Add cowork_prompt column if missing
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+    if "cowork_prompt" not in cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN cowork_prompt TEXT")
+        conn.commit()
+
     # Add is_quick_hit column if missing
     cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
     if "is_quick_hit" not in cols:
@@ -223,6 +229,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     action_type     TEXT DEFAULT 'general'
                         CHECK (action_type IN ('schedule-meeting','respond-email','review-document','follow-up','awaiting-response','prepare','general')),
     skill_output    TEXT,
+    cowork_prompt   TEXT,
     key_people      TEXT,
     related_meeting TEXT,
     user_notes      TEXT DEFAULT '',

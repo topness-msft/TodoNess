@@ -132,7 +132,7 @@ class TaskRefreshHandler(tornado.web.RequestHandler):
         run_claude("/todo-parse", label="parse", timeout=_parse_timeout())
 
 
-_VALID_SKILLS = {"respond-email", "schedule-meeting", "follow-up", "prepare", "teams-message"}
+_VALID_SKILLS = {"respond-email", "schedule-meeting", "follow-up", "prepare", "teams-message", "cowork-prompt"}
 
 
 class TaskSkillHandler(tornado.web.RequestHandler):

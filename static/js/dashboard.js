@@ -628,6 +628,16 @@ function renderDetailPane(task) {
         html += '</div>';
     }
 
+    // Cowork Prompt — separate card from skill output
+    if (task.cowork_prompt) {
+        html += '<div class="skill-output-card">'
+            + '<div class="skill-output-header">'
+            + '<div class="skill-output-title">\uD83E\uDD16 Cowork Prompt</div>'
+            + '</div>'
+            + '<div class="skill-output-text">' + renderRichText(task.cowork_prompt, task.key_people) + '</div>'
+            + '</div>';
+    }
+
     // AI Coaching
     if (task.coaching_text) {
         var isStale = isCoachingStale(task);
@@ -934,13 +944,13 @@ function getHeaderActions(task) {
 
 // ── Priority Selector ──────────────────────────────────────────────────
 function prioritySelector(task) {
+    var balls = { 1: '\u25CF', 2: '\u25D5', 3: '\u25D1', 4: '\u25D4', 5: '\u25CB' };
     var labels = { 1: 'P1 Urgent', 2: 'P2 High', 3: 'P3 Normal', 4: 'P4 Low', 5: 'P5 Information' };
     var html = '<span class="priority-field">'
-        + '<span class="priority-dot-indicator p' + task.priority + '"></span>'
         + '<select class="priority-select" onchange="updatePriority(' + task.id + ', this.value)">';
     for (var i = 1; i <= 5; i++) {
         var sel = i === task.priority ? ' selected' : '';
-        html += '<option value="' + i + '"' + sel + '>' + labels[i] + '</option>';
+        html += '<option value="' + i + '"' + sel + '>' + balls[i] + ' ' + labels[i] + '</option>';
     }
     html += '</select></span>';
     return html;
@@ -1926,8 +1936,9 @@ function formatDate(dateStr) {
 
 function priorityDot(priority, taskId) {
     var p = priority || 3;
+    var balls = { 1: '\u25CF', 2: '\u25D5', 3: '\u25D1', 4: '\u25D4', 5: '\u25CB' };
     var titleAttr = taskId ? ' title="Task #' + taskId + '"' : '';
-    return '<span class="priority-dot p' + p + '"' + titleAttr + '></span>';
+    return '<span class="priority-dot p' + p + '"' + titleAttr + '>' + balls[p] + '</span>';
 }
 
 function parseStatusIcon(parseStatus) {
@@ -2267,7 +2278,7 @@ function renderSkillButtons(task) {
 
     var skillMap = {
         'respond-email': { label: 'Draft Reply', skill: 'respond-email', icon: '\u2709' },
-        'schedule-meeting': { label: 'Find Times', skill: 'schedule-meeting', icon: '\uD83D\uDCC5' },
+        'schedule-meeting': { label: 'Cowork Prompt', skill: 'cowork-prompt', icon: '\uD83E\uDD16' },
         'follow-up': { label: 'Draft Follow-up', skill: 'follow-up', icon: '\uD83D\uDD04' },
         'awaiting-response': { label: 'Draft Follow-up', skill: 'follow-up', icon: '\u231B' },
         'prepare': { label: 'Prep Notes', skill: 'prepare', icon: '\uD83D\uDCCB' },
@@ -2284,6 +2295,11 @@ function renderSkillButtons(task) {
         } else {
             buttons.push(primary);
         }
+    }
+
+    // Add "Find Times" as secondary for schedule-meeting tasks
+    if (actionType === 'schedule-meeting') {
+        buttons.push({ label: 'Find Times', skill: 'schedule-meeting', icon: '\uD83D\uDCC5' });
     }
 
     // Add "Draft Follow-up" as secondary if not already primary

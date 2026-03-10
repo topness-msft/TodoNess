@@ -527,11 +527,12 @@ html, body {
 }
 
 .task-row .priority-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
     flex-shrink: 0;
-    margin-top: 5px;
+    margin-top: 2px;
+    font-size: 14px;
+    line-height: 1;
+    width: 14px;
+    text-align: center;
 }
 
 .task-row-content {
@@ -652,11 +653,11 @@ html, body {
 }
 
 /* ── Priority Dots ──────────────────────────────────────────────────── */
-.p1 { background: var(--p1); }
-.p2 { background: var(--p2); }
-.p3 { background: var(--p3); }
-.p4 { background: var(--p4); }
-.p5 { background: var(--p5); }
+.p1 { color: var(--p1); }
+.p2 { color: var(--p2); }
+.p3 { color: var(--p3); }
+.p4 { color: var(--p4); }
+.p5 { color: var(--p5); }
 
 /* ── Parse Status Icons (concentric circles) ───────────────────────── */
 .parse-indicator {
@@ -1373,17 +1374,16 @@ html, body {
 }
 
 .priority-dot-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
     flex-shrink: 0;
 }
 
-.priority-dot-indicator.p1 { background: var(--p1); }
-.priority-dot-indicator.p2 { background: var(--p2); }
-.priority-dot-indicator.p3 { background: var(--p3); }
-.priority-dot-indicator.p4 { background: var(--p4); }
-.priority-dot-indicator.p5 { background: var(--p5); }
+.priority-dot-indicator.p1 { color: var(--p1); }
+.priority-dot-indicator.p2 { color: var(--p2); }
+.priority-dot-indicator.p3 { color: var(--p3); }
+.priority-dot-indicator.p4 { color: var(--p4); }
+.priority-dot-indicator.p5 { color: var(--p5); }
 
 .priority-select {
     appearance: none;

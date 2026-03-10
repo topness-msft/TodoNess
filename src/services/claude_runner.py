@@ -171,24 +171,27 @@ def _skill_persist(label: str) -> None:
         logger.warning(f"[{label}] persist: extracted content is empty")
         return
 
+    # Route cowork-prompt output to its own column
+    target_column = "cowork_prompt" if skill_name == "cowork-prompt" else "skill_output"
+
     conn = sqlite3.connect(str(db_path))
     try:
-        # Check if skill_output was already written (e.g. Claude did execute DB code)
+        # Check if target column was already written (e.g. Claude did execute DB code)
         row = conn.execute(
-            "SELECT skill_output FROM tasks WHERE id = ?", (task_id,)
+            f"SELECT {target_column} FROM tasks WHERE id = ?", (task_id,)
         ).fetchone()
-        if row and row[0]:
-            logger.info(f"[{label}] persist: skill_output already in DB, skipping")
+        if row and row[0] and target_column == "skill_output":
+            logger.info(f"[{label}] persist: {target_column} already in DB, skipping")
             return
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         conn.execute(
-            "UPDATE tasks SET skill_output = ?, suggestion_refreshed_at = ?, updated_at = ? WHERE id = ?",
+            f"UPDATE tasks SET {target_column} = ?, suggestion_refreshed_at = ?, updated_at = ? WHERE id = ?",
             (extracted, now, now, task_id),
         )
         conn.commit()
         logger.info(
-            f"[{label}] persist: saved skill_output from {source} ({len(extracted)} chars)"
+            f"[{label}] persist: saved {target_column} from {source} ({len(extracted)} chars)"
         )
     except Exception as e:
         logger.error(f"[{label}] persist failed: {e}")
