@@ -212,6 +212,38 @@ Purpose: [what this message aims to accomplish]
 
 **Note:** Coaching-only re-parse (Step 2b) continues to set `skill_output` to null — it only refreshes coaching text, not skill output.
 
+## Step 3d: Answer @WorkIQ questions in user_notes
+
+For each task, check its `user_notes` for unanswered `@WorkIQ` questions. A line contains an `@WorkIQ` question if it includes `@WorkIQ` (case-insensitive). A question is **unanswered** if the line immediately following it does NOT start with `  →` (two spaces then →).
+
+If there are unanswered questions, make a single WorkIQ call with all questions:
+
+> "Answer these questions about [task title]: 1) [question text without the @WorkIQ prefix] 2) [next question] ..."
+
+After getting the response, write answers back into `user_notes` by inserting `  → [answer text]` on the line immediately below each answered question. Use:
+
+```python
+conn = sqlite3.connect('$PROJECT_ROOT/data/claudetodo.db')
+now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+task_id = TASK_ID
+qa_pairs = [('@WorkIQ question line text', 'answer text'), ...]
+row = conn.execute('SELECT user_notes FROM tasks WHERE id = ?', (task_id,)).fetchone()
+if row and row[0]:
+    lines = row[0].split('\n')
+    new_lines = []
+    for line in lines:
+        new_lines.append(line)
+        for q, a in qa_pairs:
+            if q.strip() in line:
+                new_lines.append('  → ' + a)
+                break
+    conn.execute('UPDATE tasks SET user_notes = ?, updated_at = ? WHERE id = ?', ('\n'.join(new_lines), now, task_id))
+    conn.commit()
+conn.close()
+```
+
+Replace TASK_ID and the question/answer pairs with actual values. Skip this step if the task has no unanswered `@WorkIQ` questions. This step applies to both full parse and coaching-only re-parse.
+
 ## Step 4: Write the structured fields back
 
 **For full parse:**

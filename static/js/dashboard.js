@@ -8,6 +8,7 @@ var reconnectTimer = null;
 var openDropdownId = null;
 var searchQuery = '';
 var _quickFilterActive = false;
+var _personFilter = '';  // empty = no filter, else person name
 var lastSyncTime = null;
 var _skillPollTimer = null;
 var _runningSkills = {};
@@ -305,6 +306,41 @@ function toggleQuickFilter() {
     renderTaskList();
 }
 
+// ── Person Filter ────────────────────────────────────────────────────
+function collectAllPeople() {
+    var nameSet = {};
+    tasks.forEach(function(t) {
+        parsePeopleNames(t.key_people).forEach(function(name) {
+            if (name) nameSet[name] = true;
+        });
+    });
+    return Object.keys(nameSet).sort();
+}
+
+function updatePersonFilter() {
+    var select = document.getElementById('person-filter');
+    var current = _personFilter;
+    var people = collectAllPeople();
+    var html = '<option value="">All people</option>';
+    people.forEach(function(name) {
+        var sel = name === current ? ' selected' : '';
+        html += '<option value="' + escapeHtml(name) + '"' + sel + '>' + escapeHtml(name) + '</option>';
+    });
+    select.innerHTML = html;
+}
+
+function applyPersonFilter() {
+    var select = document.getElementById('person-filter');
+    _personFilter = select ? select.value : '';
+    renderTaskList();
+}
+
+function taskMatchesPerson(task) {
+    if (!_personFilter) return true;
+    var names = parsePeopleNames(task.key_people);
+    return names.indexOf(_personFilter) !== -1;
+}
+
 function taskMatchesSearch(task) {
     if (!searchQuery) return true;
     var fields = [
@@ -329,6 +365,7 @@ function taskMatchesSearch(task) {
 
 // ── Render Task List ───────────────────────────────────────────────────
 function renderTaskList() {
+    updatePersonFilter();
     var active = [];
     var waiting = [];
     var snoozed = [];
@@ -339,6 +376,7 @@ function renderTaskList() {
 
     tasks.forEach(function(t) {
         if (!taskMatchesSearch(t)) return;
+        if (!taskMatchesPerson(t)) return;
         // Treat in_progress as active (section removed)
         if (t.status === 'active' || t.status === 'in_progress') {
             active.push(t);

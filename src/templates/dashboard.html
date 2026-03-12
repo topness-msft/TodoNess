@@ -38,6 +38,9 @@
         <div class="left-panel">
             <div class="search-bar">
                 <input type="text" id="search-input" class="search-input" placeholder="Filter tasks..." autocomplete="off" oninput="applySearchFilter()">
+                <select id="person-filter" class="person-filter" onchange="applyPersonFilter()">
+                    <option value="">All people</option>
+                </select>
             </div>
             <div id="task-list" class="task-list">
                 <!-- Active Section -->
