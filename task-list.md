@@ -7,6 +7,7 @@
 - [ ] #008 | 2026-03-12 | XL | Recurring Tasks — tasks that repeat on a schedule, each recurrence runs full AI coaching and AI skill execution
 - [ ] #009 | 2026-03-12 | M  | Check suggestions for progress — query WorkIQ for suggested tasks (like /waiting-check does for waiting tasks) to detect if they're already resolved or still need action, so user knows whether to accept or dismiss
 - [ ] #010 | 2026-03-12 | S  | Filter by key person — dashboard filter that shows all tasks related to a specific person across all statuses
+- [ ] #011 | 2026-03-12 | S  | Periodic DB backup — automatically back up claudetodo.db on a schedule
 
 ## In Progress
 

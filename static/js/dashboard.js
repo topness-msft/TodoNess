@@ -318,21 +318,31 @@ function collectAllPeople() {
 }
 
 function updatePersonFilter() {
-    var select = document.getElementById('person-filter');
-    if (!select) return;
-    var current = _personFilter;
+    var container = document.getElementById('person-filter');
+    if (!container) return;
     var people = collectAllPeople();
-    var html = '<option value="">All people</option>';
+    if (!people.length) {
+        container.innerHTML = '';
+        return;
+    }
+    var html = '';
     people.forEach(function(name) {
-        var sel = name === current ? ' selected' : '';
-        html += '<option value="' + escapeHtml(name) + '"' + sel + '>' + escapeHtml(name) + '</option>';
+        var active = name === _personFilter ? ' person-filter-pill-active' : '';
+        var initials = getInitials(name);
+        html += '<div class="person-filter-pill' + active + '" onclick="togglePersonFilter(\'' + escapeHtml(name).replace(/'/g, "\\'") + '\')">'
+            + '<span class="person-pill-avatar">' + initials + '</span>'
+            + '<span>' + escapeHtml(name) + '</span>'
+            + '</div>';
     });
-    select.innerHTML = html;
+    container.innerHTML = html;
+}
+
+function togglePersonFilter(name) {
+    _personFilter = (_personFilter === name) ? '' : name;
+    renderTaskList();
 }
 
 function applyPersonFilter() {
-    var select = document.getElementById('person-filter');
-    _personFilter = select ? select.value : '';
     renderTaskList();
 }
 
