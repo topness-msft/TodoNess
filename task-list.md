@@ -5,11 +5,13 @@
 - [ ] #006 | 2026-03-09 | XL | Browser Action Tasks — Playwright two-phase recon/execute for form-filling tasks
 
 - [ ] #008 | 2026-03-12 | XL | Recurring Tasks — tasks that repeat on a schedule, each recurrence runs full AI coaching and AI skill execution
-- [ ] #009 | 2026-03-12 | M  | Check suggestions for progress — query WorkIQ for suggested tasks (like /waiting-check does for waiting tasks) to detect if they're already resolved or still need action, so user knows whether to accept or dismiss
-- [ ] #010 | 2026-03-12 | S  | Filter by key person — dashboard filter that shows all tasks related to a specific person across all statuses
 - [ ] #011 | 2026-03-12 | S  | Periodic DB backup — automatically back up claudetodo.db on a schedule
 
 ## In Progress
+
+## Completed
+- [x] #010 | 2026-03-12 | S  | Filter by key person — dashboard filter that shows all tasks related to a specific person across all statuses | completed: 2026-03-12
+- [x] #009 | 2026-03-12 | M  | Check suggestions for progress — /suggestion-check command via WorkIQ | completed: 2026-03-12
 
 ## Completed
 - [x] #007 | 2026-03-10 | Add quick-task filter at the top of the active section on the dashboard | completed: 2026-03-12
