@@ -1136,6 +1136,8 @@ function saveTitle(taskId) {
             if (idx >= 0) tasks[idx] = data.task;
             renderTaskList();
             renderDetailPane(data.task);
+            // Title changed — trigger re-parse so description, key_people, coaching update
+            refreshTask(taskId);
         }
     })
     .catch(function(err) { console.error('Failed to save title:', err); });
