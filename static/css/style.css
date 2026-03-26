@@ -2124,6 +2124,54 @@ html, body {
     cursor: default;
 }
 
+/* ── Suggestion Check Badges ───────────────────────────────────────── */
+.suggestion-check-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 6px;
+    cursor: default;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.suggestion-check-badge.sc-resolved {
+    background: var(--success-bg);
+    color: var(--success);
+}
+.suggestion-check-badge.sc-pending {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+.suggestion-check-badge.sc-unclear {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+
+/* Detail pane suggestion check status */
+.waiting-activity-status.sc-resolved { color: var(--success); }
+.waiting-activity-status.sc-pending  { color: var(--text-secondary); }
+.waiting-activity-status.sc-unclear  { color: var(--warning); }
+
+/* Batch dismiss button in section header */
+.batch-dismiss-btn {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success);
+    cursor: pointer;
+    margin-left: 4px;
+    white-space: nowrap;
+}
+.batch-dismiss-btn:hover {
+    background: var(--success);
+    color: #fff;
+}
+
 /* ── OOF Snooze Indicators ─────────────────────────────────────────── */
 .snooze-option-oof {
     background: var(--overdue-bg);

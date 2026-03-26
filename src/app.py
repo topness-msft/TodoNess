@@ -30,6 +30,7 @@ SYNC_INTERVAL_MS = 30 * 60 * 1000  # 30 minutes
 UNSNOOZE_INTERVAL_MS = 60 * 1000  # 60 seconds
 PARSE_CHECK_INTERVAL_MS = 30 * 1000  # 30 seconds
 WAITING_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000  # 4 hours
+SUGGESTION_CHECK_INTERVAL_MS = 3 * 60 * 60 * 1000  # 3 hours
 BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000  # 6 hours
 BACKUP_KEEP_DAYS = 7
 
@@ -44,6 +45,30 @@ def _check_waiting():
     """Called every 4 hours to check activity on waiting tasks."""
     result = run_copilot("/waiting-check", label="waiting-check")
     logger.info(f"Waiting check: {result['message']}")
+
+
+SUGGESTION_CHECK_BASE_TIMEOUT = 120  # 2 min base
+SUGGESTION_CHECK_PER_TASK_TIMEOUT = 60  # +1 min per task
+
+
+def _check_suggestions():
+    """Called every 3 hours to check if suggested tasks are already resolved."""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM tasks WHERE status = 'suggested'"
+        ).fetchone()
+        count = row[0] if row else 0
+    finally:
+        conn.close()
+
+    if not count:
+        logger.info("Suggestion check: skipped (no suggested tasks)")
+        return
+
+    timeout = SUGGESTION_CHECK_BASE_TIMEOUT + (count * SUGGESTION_CHECK_PER_TASK_TIMEOUT)
+    result = run_copilot("/suggestion-check", label="suggestion-check", timeout=timeout)
+    logger.info(f"Suggestion check: {result['message']}")
 
 
 def _backup_db():
@@ -135,6 +160,8 @@ def make_app() -> tornado.web.Application:
     )
     app.auto_sync_enabled = True
     app.sync_callback = None
+    app.auto_suggestion_check_enabled = True
+    app.suggestion_check_callback = None
     return app
 
 
@@ -210,6 +237,13 @@ def start_server(port=8766):
     waiting_callback = tornado.ioloop.PeriodicCallback(_check_waiting, WAITING_CHECK_INTERVAL_MS)
     waiting_callback.start()
     logger.info("Waiting activity checker enabled (every 4 hr)")
+
+    # Suggestion check every 3 hours
+    suggestion_check_cb = tornado.ioloop.PeriodicCallback(_check_suggestions, SUGGESTION_CHECK_INTERVAL_MS)
+    suggestion_check_cb.start()
+    app.suggestion_check_callback = suggestion_check_cb
+    app.auto_suggestion_check_enabled = True
+    logger.info("Suggestion checker enabled (every 3 hr)")
 
     # DB backup every 6 hours
     backup_callback = tornado.ioloop.PeriodicCallback(_backup_db, BACKUP_INTERVAL_MS)

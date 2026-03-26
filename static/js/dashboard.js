@@ -485,6 +485,22 @@ function renderTaskList() {
 
     renderSection('active', active);
     renderSection('suggested', suggested);
+
+    // Show/hide batch dismiss button based on resolved suggestion count
+    var resolvedCount = suggested.filter(function(t) {
+        var a = parseWaitingActivity(t);
+        return a && a.status === 'likely_resolved';
+    }).length;
+    var batchBtn = document.getElementById('batch-dismiss-btn');
+    if (batchBtn) {
+        if (resolvedCount > 0) {
+            batchBtn.style.display = '';
+            batchBtn.textContent = 'Dismiss Resolved (' + resolvedCount + ')';
+        } else {
+            batchBtn.style.display = 'none';
+        }
+    }
+
     renderSection('waiting', waiting);
     renderSection('snoozed', snoozed);
     renderSection('completed', completed);
@@ -529,6 +545,7 @@ function renderSection(sectionId, sectionTasks) {
         var parseHtml = parseStatusIcon(task.parse_status);
         var enrichedHtml = task.skill_output ? '<span class="enriched-icon" title="Skill enriched">\u26A1</span>' : '';
         var waitingIconHtml = waitingActivityIcon(task);
+        var suggestionBadgeHtml = suggestionCheckBadge(task);
 
         // Build preview line: description, coaching, or key people
         var preview = task.description || task.coaching_text || '';
@@ -575,6 +592,7 @@ function renderSection(sectionId, sectionTasks) {
             + '<span class="task-source-icon">' + sourceTypeIcon(task.source_type) + '</span>'
             + '<span class="task-title">' + escapeHtml(task.title) + '</span>'
             + waitingIconHtml
+            + suggestionBadgeHtml
             + dueHtml
             + '</div>'
             + previewHtml
@@ -711,6 +729,11 @@ function renderDetailPane(task) {
     // Waiting Activity Check (between Key People and Notes)
     if (task.status === 'waiting' || (task.status === 'snoozed' && parseWaitingActivity(task) && parseWaitingActivity(task).status === 'out_of_office')) {
         html += renderWaitingActivityCard(task);
+    }
+
+    // Suggestion Check (for suggested tasks, between Key People and Notes)
+    if (task.status === 'suggested') {
+        html += renderSuggestionCheckCard(task);
     }
 
     // User Notes
@@ -2101,6 +2124,162 @@ function _stopWaitingCheckPoll() {
     }
 }
 
+// ── Suggestion Check ──────────────────────────────────────────────────
+function suggestionCheckBadge(task) {
+    if (task.status !== 'suggested') return '';
+    var activity = parseWaitingActivity(task);
+    if (!activity) return '';
+
+    var cfg = {
+        likely_resolved: { icon: '\u2713', label: 'Done?', cls: 'resolved' },
+        still_pending:   { icon: '\u23F3', label: 'Pending', cls: 'pending' },
+        unclear:         { icon: '?', label: 'Unclear', cls: 'unclear' }
+    };
+    var c = cfg[activity.status];
+    if (!c) return '';
+
+    var tooltip = escapeHtml((activity.summary || '') + ' \u2014 checked ' + timeAgo(activity.checked_at));
+    return '<span class="suggestion-check-badge sc-' + c.cls + '" title="' + tooltip + '">'
+        + c.icon + ' ' + c.label + '</span>';
+}
+
+function renderSuggestionCheckCard(task) {
+    if (task.status !== 'suggested') return '';
+    var activity = parseWaitingActivity(task);
+    if (!activity) {
+        return '<div class="waiting-activity-card">'
+            + '<div class="detail-label">Suggestion Check</div>'
+            + '<div class="waiting-activity-body">'
+            + '<span class="waiting-activity-status">Not checked yet</span>'
+            + '<button class="btn btn-sm" onclick="requestSuggestionCheck()" style="margin-left:auto">Check Now</button>'
+            + '</div>'
+            + '</div>';
+    }
+
+    var cfg = {
+        likely_resolved: { icon: '\u2713', label: 'Likely done' },
+        still_pending:   { icon: '\u23F3', label: 'Still pending' },
+        unclear:         { icon: '?', label: 'Unclear' }
+    };
+    var c = cfg[activity.status] || { icon: '', label: activity.status };
+
+    var dismissBtn = '';
+    if (activity.status === 'likely_resolved') {
+        dismissBtn = '<button class="btn btn-sm btn-primary" onclick="doAction(' + task.id + ',\'dismiss\')" style="margin-left:auto">Dismiss \u2014 Already Done</button>';
+    } else {
+        dismissBtn = '<button class="btn btn-sm" onclick="requestSuggestionCheck()" style="margin-left:auto">Re-check</button>';
+    }
+
+    return '<div class="waiting-activity-card">'
+        + '<div class="detail-label">Suggestion Check</div>'
+        + '<div class="waiting-activity-body">'
+        + '<span class="waiting-activity-status sc-' + (activity.status === 'likely_resolved' ? 'resolved' : activity.status === 'still_pending' ? 'pending' : 'unclear') + '">'
+        + c.icon + ' ' + escapeHtml(c.label)
+        + '</span>'
+        + dismissBtn
+        + '</div>'
+        + '<div class="waiting-activity-summary">' + escapeHtml(activity.summary || '') + '</div>'
+        + '<div class="waiting-activity-checked">Checked ' + timeAgo(activity.checked_at) + '</div>'
+        + '</div>';
+}
+
+var _suggestionCheckPollTimer = null;
+
+function requestSuggestionCheck() {
+    var btn = document.getElementById('suggestion-check-btn');
+    if (btn && btn.classList.contains('syncing')) return;
+    if (btn) {
+        btn.classList.add('syncing');
+        btn.title = 'Checking suggestions...';
+    }
+
+    fetch('/api/sync-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suggestion_check: true })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.ok || (data.message && data.message.toLowerCase().indexOf('already running') !== -1)) {
+            _startSuggestionCheckPoll();
+        } else {
+            if (btn) {
+                btn.classList.remove('syncing');
+                btn.title = 'Check if suggestions are already resolved';
+            }
+        }
+    })
+    .catch(function(err) {
+        if (btn) {
+            btn.classList.remove('syncing');
+            btn.title = 'Check if suggestions are already resolved';
+        }
+        console.error('Suggestion check request failed:', err);
+    });
+}
+
+function _startSuggestionCheckPoll() {
+    if (_suggestionCheckPollTimer) return;
+    _suggestionCheckPollTimer = setInterval(function() {
+        fetch('/api/runner-status')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (!data['suggestion-check']) {
+                    _stopSuggestionCheckPoll();
+                    var btn = document.getElementById('suggestion-check-btn');
+                    if (btn) {
+                        btn.classList.remove('syncing');
+                        btn.title = 'Check if suggestions are already resolved';
+                    }
+                    fetchTasks();
+                }
+            })
+            .catch(function() {});
+    }, 5000);
+}
+
+function _stopSuggestionCheckPoll() {
+    if (_suggestionCheckPollTimer) {
+        clearInterval(_suggestionCheckPollTimer);
+        _suggestionCheckPollTimer = null;
+    }
+}
+
+function batchDismissResolved() {
+    var resolved = tasks.filter(function(t) {
+        if (t.status !== 'suggested') return false;
+        var a = parseWaitingActivity(t);
+        return a && a.status === 'likely_resolved';
+    });
+    if (!resolved.length) return;
+    if (!confirm('Dismiss ' + resolved.length + ' resolved suggestion' + (resolved.length > 1 ? 's' : '') + '?')) return;
+
+    var promises = resolved.map(function(t) {
+        return fetch('/api/tasks/' + t.id + '/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'dismiss' })
+        }).then(function(res) { return res.json(); });
+    });
+
+    Promise.all(promises).then(function(results) {
+        results.forEach(function(data) {
+            if (data.task) {
+                var idx = tasks.findIndex(function(t) { return t.id === data.task.id; });
+                if (idx >= 0) tasks[idx] = data.task;
+            }
+        });
+        renderTaskList();
+        if (selectedTaskId) {
+            var sel = tasks.find(function(t) { return t.id === selectedTaskId; });
+            if (sel) renderDetailPane(sel);
+            else clearDetailPane();
+        }
+    }).catch(function(err) {
+        console.error('Batch dismiss failed:', err);
+    });
+}
+
 // ── Utilities ──────────────────────────────────────────────────────────
 function timeAgo(isoString) {
     if (!isoString) return 'never';
@@ -2370,6 +2549,26 @@ function updateSyncUI(data) {
     } else {
         statusText.textContent = '';
     }
+
+    // Suggestion check button state
+    var scBtn = document.getElementById('suggestion-check-btn');
+    if (scBtn) {
+        if (data.suggestion_check_running) {
+            if (!scBtn.classList.contains('syncing')) {
+                scBtn.classList.add('syncing');
+                scBtn.title = 'Checking suggestions...';
+                _startSuggestionCheckPoll();
+            }
+        } else {
+            var wasChecking = scBtn.classList.contains('syncing');
+            scBtn.classList.remove('syncing');
+            scBtn.title = 'Check if suggestions are already resolved';
+            if (wasChecking) {
+                _stopSuggestionCheckPoll();
+                fetchTasks();
+            }
+        }
+    }
 }
 
 function _startFastPoll() {
@@ -2399,23 +2598,10 @@ function startSyncWatcher() {
         fetch('/api/sync-status')
             .then(function(res) { return res.json(); })
             .then(function(data) {
+                updateSyncUI(data);
                 // Detect sync running → start fast poll to track it
                 if (data.sync_running) {
-                    var btn = document.getElementById('sync-btn');
-                    if (btn && !btn.classList.contains('syncing')) {
-                        btn.classList.add('syncing');
-                    }
                     _startFastPoll();
-                    return;
-                }
-                // Detect new sync completed since last known time
-                if (data.last_sync && data.last_sync.synced_at) {
-                    if (lastSyncTime && data.last_sync.synced_at !== lastSyncTime) {
-                        fetchTasks();
-                    }
-                    lastSyncTime = data.last_sync.synced_at;
-                    var statusText = document.getElementById('sync-status-text');
-                    if (statusText) statusText.textContent = timeAgo(lastSyncTime);
                 }
             })
             .catch(function() {});

@@ -58,6 +58,12 @@
                         <span class="section-toggle" id="toggle-suggested">&#9662;</span>
                         <span class="section-title">Suggestions</span>
                         <span class="section-count" id="count-suggested">0</span>
+                        <button id="suggestion-check-btn" class="sync-btn-inline" onclick="event.stopPropagation(); requestSuggestionCheck()" title="Check if suggestions are already resolved">
+                            <span class="sync-icon">&#10003;</span>
+                        </button>
+                        <button id="batch-dismiss-btn" class="batch-dismiss-btn" onclick="event.stopPropagation(); batchDismissResolved()" title="Dismiss resolved suggestions" style="display:none">
+                            Dismiss Resolved
+                        </button>
                         <button id="sync-btn" class="sync-btn-inline" onclick="event.stopPropagation(); requestSync()" title="Sync with M365">
                             <span class="sync-icon" id="sync-icon">&#8635;</span>
                         </button>

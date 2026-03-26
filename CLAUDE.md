@@ -64,6 +64,7 @@ Re-evaluate this policy when Graph MCP or improved WorkIQ email folder/flag acce
 | `/todo-refresh` | Full M365 scan: Teams/meetings + awaiting-response → suggested tasks | Yes |
 | `/todo-review` | Interactive review of tasks needing attention | Yes |
 | `/waiting-check` | Check for activity on waiting tasks | Yes |
+| `/suggestion-check` | Check if suggested tasks are already resolved | Yes |
 
 ## Skills
 - `respond-email` — Draft email response for email-sourced tasks
@@ -71,6 +72,7 @@ Re-evaluate this policy when Graph MCP or improved WorkIQ email folder/flag acce
 - `teams-message` — Draft a Teams message for chat-based tasks
 - `follow-up` — Draft a follow-up message for tasks needing a check-in
 - `prepare` — Build preparation notes for meetings/presentations
+- `suggestion-check` — Check suggested tasks for resolution status (runs every 3 hr)
 
 ## Database Schema
 Four tables: `tasks`, `task_context`, `refresh_schedule`, `sync_log`. See `src/db.py` for full schema.

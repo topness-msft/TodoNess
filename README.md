@@ -34,6 +34,7 @@ The dashboard runs as a local web server. AI features (scanning, parsing, skills
 | `/todo-refresh` | Scan M365 for new actionable items |
 | `/todo-review` | Review tasks needing attention |
 | `/waiting-check` | Check for activity on waiting tasks |
+| `/suggestion-check` | Check if suggested tasks are already resolved |
 
 Skills generate contextual drafts for individual tasks:
 

@@ -7,8 +7,10 @@ manual sync button.
 
 import json
 import logging
+import sqlite3
 import tornado.web
 
+from ..db import get_connection
 from ..models import get_last_sync
 from ..services.claude_runner import run_copilot, is_running, get_status, get_exit_info
 
@@ -39,6 +41,8 @@ class SyncStatusHandler(tornado.web.RequestHandler):
             "last_sync": dict(last_sync) if last_sync else None,
             "sync_running": is_sync_running(),
             "auto_sync_enabled": getattr(self.application, "auto_sync_enabled", True),
+            "suggestion_check_running": is_running("suggestion-check"),
+            "auto_suggestion_check_enabled": getattr(self.application, "auto_suggestion_check_enabled", True),
         }))
 
     def post(self):
@@ -69,6 +73,23 @@ class SyncStatusHandler(tornado.web.RequestHandler):
         # On-demand waiting activity check
         if body.get("waiting_check"):
             result = run_copilot("/waiting-check", label="waiting-check")
+            if not result["ok"] and "already running" not in result["message"].lower():
+                self.set_status(500)
+            self.write(json.dumps(result))
+            return
+
+        # On-demand suggestion check
+        if body.get("suggestion_check"):
+            conn = get_connection()
+            try:
+                row = conn.execute(
+                    "SELECT COUNT(*) FROM tasks WHERE status = 'suggested'"
+                ).fetchone()
+                count = row[0] if row else 0
+            finally:
+                conn.close()
+            timeout = 120 + (count * 60)  # 2 min base + 1 min per task
+            result = run_copilot("/suggestion-check", label="suggestion-check", timeout=timeout)
             if not result["ok"] and "already running" not in result["message"].lower():
                 self.set_status(500)
             self.write(json.dumps(result))
