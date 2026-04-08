@@ -510,6 +510,13 @@ function renderTaskList() {
         }
     }
 
+    // Update suggestion-check button tooltip with checked/total count
+    var scBtn = document.getElementById('suggestion-check-btn');
+    if (scBtn && !scBtn.classList.contains('syncing')) {
+        var checkedCount = suggested.filter(function(t) { return parseWaitingActivity(t); }).length;
+        scBtn.title = 'Check if suggestions are already resolved (' + checkedCount + '/' + suggested.length + ' checked)';
+    }
+
     renderSection('waiting', waiting);
     renderSection('snoozed', snoozed);
     renderSection('completed', completed);
