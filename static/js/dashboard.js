@@ -8,6 +8,7 @@ var reconnectTimer = null;
 var openDropdownId = null;
 var searchQuery = '';
 var _quickFilterActive = false;
+var _resolvedFilterActive = false;  // suggestion section: show only "assessed done"
 var _personFilter = '';  // empty = no filter, else person name
 var _collapsedBeforeFilter = [];  // sections that were collapsed before person filter was applied
 var lastSyncTime = null;
@@ -311,6 +312,14 @@ function toggleQuickFilter() {
     renderTaskList();
 }
 
+// ── Resolved Suggestion Filter ───────────────────────────────────────
+function toggleResolvedFilter() {
+    _resolvedFilterActive = !_resolvedFilterActive;
+    var pill = document.getElementById('resolved-filter-suggested');
+    if (pill) pill.classList.toggle('active', _resolvedFilterActive);
+    renderTaskList();
+}
+
 // ── Person Filter ────────────────────────────────────────────────────
 function collectAllPeople() {
     var nameSet = {};
@@ -516,6 +525,14 @@ function renderSection(sectionId, sectionTasks) {
     if (sectionId === 'active' && _quickFilterActive) {
         var totalCount = sectionTasks.length;
         sectionTasks = sectionTasks.filter(function(t) { return t.is_quick_hit; });
+        count.textContent = sectionTasks.length + '/' + totalCount;
+    // Resolved filter for suggested section
+    } else if (sectionId === 'suggested' && _resolvedFilterActive) {
+        var totalCount = sectionTasks.length;
+        sectionTasks = sectionTasks.filter(function(t) {
+            var a = parseWaitingActivity(t);
+            return a && a.status === 'likely_resolved';
+        });
         count.textContent = sectionTasks.length + '/' + totalCount;
     } else {
         count.textContent = sectionTasks.length;
