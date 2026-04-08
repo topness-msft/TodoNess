@@ -513,8 +513,7 @@ function renderTaskList() {
     // Update suggestion-check button tooltip with checked/total count
     var scBtn = document.getElementById('suggestion-check-btn');
     if (scBtn && !scBtn.classList.contains('syncing')) {
-        var checkedCount = suggested.filter(function(t) { return parseWaitingActivity(t); }).length;
-        scBtn.title = 'Check if suggestions are already resolved (' + checkedCount + '/' + suggested.length + ' checked)';
+        scBtn.title = _suggestionCheckTooltip();
     }
 
     renderSection('waiting', waiting);
@@ -2149,6 +2148,12 @@ function _stopWaitingCheckPoll() {
 }
 
 // ── Suggestion Check ──────────────────────────────────────────────────
+function _suggestionCheckTooltip() {
+    var suggested = tasks.filter(function(t) { return t.status === 'suggested'; });
+    var checked = suggested.filter(function(t) { return parseWaitingActivity(t); }).length;
+    return 'Check if suggestions are already resolved (' + checked + '/' + suggested.length + ' checked)';
+}
+
 function suggestionCheckBadge(task) {
     if (task.status !== 'suggested') return '';
     var activity = parseWaitingActivity(task);
@@ -2229,14 +2234,14 @@ function requestSuggestionCheck() {
         } else {
             if (btn) {
                 btn.classList.remove('syncing');
-                btn.title = 'Check if suggestions are already resolved';
+                btn.title = _suggestionCheckTooltip();
             }
         }
     })
     .catch(function(err) {
         if (btn) {
             btn.classList.remove('syncing');
-            btn.title = 'Check if suggestions are already resolved';
+            btn.title = _suggestionCheckTooltip();
         }
         console.error('Suggestion check request failed:', err);
     });
@@ -2253,7 +2258,7 @@ function _startSuggestionCheckPoll() {
                     var btn = document.getElementById('suggestion-check-btn');
                     if (btn) {
                         btn.classList.remove('syncing');
-                        btn.title = 'Check if suggestions are already resolved';
+                        btn.title = _suggestionCheckTooltip();
                     }
                     fetchTasks();
                 }
@@ -2586,7 +2591,7 @@ function updateSyncUI(data) {
         } else {
             var wasChecking = scBtn.classList.contains('syncing');
             scBtn.classList.remove('syncing');
-            scBtn.title = 'Check if suggestions are already resolved';
+            scBtn.title = _suggestionCheckTooltip();
             if (wasChecking) {
                 _stopSuggestionCheckPoll();
                 fetchTasks();
