@@ -82,7 +82,9 @@ For **each item** WorkIQ returned, classify into one of three tiers:
 
 Then apply these additional filters:
 
-1. **"Is this stale or concluded?"** — Does the conversation appear finished (I already replied, the thread moved on, the message was deleted)? If so, skip entirely.
+1. **"Is this stale or concluded?"** — Apply TWO checks:
+   - **Conversation state:** Has the conversation finished (I already replied, the thread moved on, the message was deleted)? If so, skip entirely.
+   - **Age threshold:** Is the source_date older than the last refresh? Check the `sync_log` table for the most recent `synced_at` — any source_date before that was already available in a prior scan and either wasn't surfaced or was dismissed. Skip these unless there's clear evidence the action is still needed (e.g., an upcoming deadline, a recent follow-up message). Flagged emails are exempt from the age threshold (a flag represents explicit intent regardless of age).
 2. **"Is this automated noise?"** — Is this a confirmation, receipt, notification, or noreply email with no genuine action required? If so, skip entirely.
 
 Outcomes:
@@ -276,6 +278,8 @@ conn.execute(
 conn.commit()
 conn.close()
 ```
+
+**Staleness guard:** The `create_task()` function in `src/models.py` also enforces a code-side staleness check — suggested tasks with `source_date` older than 14 days (excluding emails) are auto-downgraded to P5. This is a safety net; the prompt-side filter above should catch most stale items before they reach the DB.
 
 Track counts: `created`, `updated` (augmented existing), `skipped` (dismissed), and counts by source type (`email`, `chat`, `meeting`).
 

@@ -196,15 +196,25 @@ def create_task(
                 )
                 return fuzzy_match
 
-        # Staleness guard: downgrade old suggestions to P5
+        # Staleness guard: if source predates last refresh, it was already
+        # available and either skipped or not surfaced — downgrade to P5.
+        # Flagged emails are exempt (flag = explicit intent regardless of age).
+        # Falls back to 14-day hard cap when no sync history exists.
         if status == "suggested" and source_date and source_type != "email":
             try:
                 sd = datetime.strptime(source_date, "%Y-%m-%d")
-                age_days = (datetime.utcnow() - sd).days
-                if age_days > 14:
+                last = conn.execute(
+                    "SELECT synced_at FROM sync_log ORDER BY synced_at DESC LIMIT 1"
+                ).fetchone()
+                if last and last["synced_at"]:
+                    cutoff = datetime.strptime(last["synced_at"][:10], "%Y-%m-%d")
+                else:
+                    cutoff = datetime.utcnow() - timedelta(days=14)
+                if sd < cutoff:
+                    age_days = (datetime.utcnow() - sd).days
                     orig_priority = priority
                     priority = 5
-                    note = f"[Auto-downgraded from P{orig_priority} — source is {age_days} days old] "
+                    note = f"[Auto-downgraded from P{orig_priority} — source is {age_days}d old, predates last refresh] "
                     coaching_text = note + (coaching_text or "")
             except (ValueError, TypeError):
                 pass  # malformed date, skip guard
