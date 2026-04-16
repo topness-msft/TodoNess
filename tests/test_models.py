@@ -390,5 +390,125 @@ class TestModels(unittest.TestCase):
         self.assertNotEqual(t1["id"], t2["id"])
 
 
+    # ── Staleness Guard ──
+
+    def test_staleness_guard_downgrades_old_suggestion(self):
+        from src.models import create_task
+        from src.db import get_connection
+        from datetime import datetime, timedelta
+
+        conn = get_connection()
+        today = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute(
+            "INSERT INTO sync_log (sync_type, synced_at, result_summary, tasks_created, tasks_updated) VALUES (?,?,?,?,?)",
+            ("full_scan", today, "{}", 0, 0),
+        )
+        conn.commit()
+        conn.close()
+
+        old_date = (datetime.utcnow() - timedelta(days=20)).strftime("%Y-%m-%d")
+        task = create_task(
+            title="Old chat suggestion",
+            status="suggested",
+            source_type="chat",
+            source_id="test::staleness::downgrades_old",
+            source_date=old_date,
+            priority=2,
+        )
+        self.assertEqual(task["priority"], 5)
+        self.assertIn("Auto-downgraded", task["coaching_text"])
+
+    def test_staleness_guard_keeps_recent_suggestion(self):
+        from src.models import create_task
+        from src.db import get_connection
+        from datetime import datetime, timedelta
+
+        conn = get_connection()
+        sync_date = (datetime.utcnow() - timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute(
+            "INSERT INTO sync_log (sync_type, synced_at, result_summary, tasks_created, tasks_updated) VALUES (?,?,?,?,?)",
+            ("full_scan", sync_date, "{}", 0, 0),
+        )
+        conn.commit()
+        conn.close()
+
+        recent_date = (datetime.utcnow() - timedelta(days=2)).strftime("%Y-%m-%d")
+        task = create_task(
+            title="Recent meeting suggestion",
+            status="suggested",
+            source_type="meeting",
+            source_id="test::staleness::keeps_recent",
+            source_date=recent_date,
+            priority=2,
+        )
+        self.assertEqual(task["priority"], 2)
+
+    def test_staleness_guard_exempts_email(self):
+        from src.models import create_task
+        from src.db import get_connection
+        from datetime import datetime, timedelta
+
+        conn = get_connection()
+        today = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute(
+            "INSERT INTO sync_log (sync_type, synced_at, result_summary, tasks_created, tasks_updated) VALUES (?,?,?,?,?)",
+            ("full_scan", today, "{}", 0, 0),
+        )
+        conn.commit()
+        conn.close()
+
+        old_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+        task = create_task(
+            title="Old flagged email",
+            status="suggested",
+            source_type="email",
+            source_id="test::staleness::exempts_email",
+            source_date=old_date,
+            priority=2,
+        )
+        self.assertEqual(task["priority"], 2)
+
+    def test_staleness_guard_skips_active_tasks(self):
+        from src.models import create_task
+        from src.db import get_connection
+        from datetime import datetime, timedelta
+
+        conn = get_connection()
+        today = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute(
+            "INSERT INTO sync_log (sync_type, synced_at, result_summary, tasks_created, tasks_updated) VALUES (?,?,?,?,?)",
+            ("full_scan", today, "{}", 0, 0),
+        )
+        conn.commit()
+        conn.close()
+
+        old_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+        task = create_task(
+            title="Active old task",
+            status="active",
+            source_type="chat",
+            source_id="test::staleness::skips_active",
+            source_date=old_date,
+            priority=2,
+        )
+        self.assertEqual(task["priority"], 2)
+
+    def test_staleness_guard_fallback_14_days(self):
+        from src.models import create_task
+        from datetime import datetime, timedelta
+
+        old_date = (datetime.utcnow() - timedelta(days=20)).strftime("%Y-%m-%d")
+        task = create_task(
+            title="No sync history suggestion",
+            status="suggested",
+            source_type="chat",
+            source_id="test::staleness::fallback_14d",
+            source_date=old_date,
+            priority=3,
+        )
+        self.assertEqual(task["priority"], 5)
+        self.assertIn("Auto-downgraded", task["coaching_text"])
+
+
 if __name__ == "__main__":
     unittest.main()
