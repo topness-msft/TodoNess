@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Briefing — TodoNess</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --accent: #2564cf;
+  --accent-light: #e8f0fe;
+  --accent-hover: #1b4fa0;
+  --header-bg: #2564cf;
+  --bg: #ffffff;
+  --bg-sidebar: #f5f5f5;
+  --bg-hover: #f0f0f0;
+  --bg-selected: #e8f0fe;
+  --bg-detail: #faf9f8;
+  --bg-input: #f5f5f5;
+  --text: #242424;
+  --text-secondary: #616161;
+  --text-muted: #adadad;
+  --border: #e8e8e8;
+  --success: #107c10;
+  --danger: #d13438;
+  --warning: #f7630c;
+  --ai: #8b5cf6;
+  --ai-light: #f3f0ff;
+  --ai-border: #d4c5f9;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 8px;
+}
+
+.dark {
+  --accent: #4a98f7; --accent-light: #1a3050; --accent-hover: #6aafff;
+  --header-bg: #1a3a6a;
+  --bg: #1f1f1f; --bg-sidebar: #2b2b2b; --bg-hover: #383838;
+  --bg-selected: #1a3050; --bg-detail: #2b2b2b; --bg-input: #333333;
+  --text: #e8e8e8; --text-secondary: #c0c0c0; --text-muted: #8a8a8a;
+  --border: #4a4a4a;
+  --ai: #a78bfa; --ai-light: #2d2640; --ai-border: #5b4a8a;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+body {
+  font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100vh; overflow: hidden; font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── Header (matches TodoIQ exactly) ────────────────────── */
+.header-bar {
+  background: var(--header-bg); color: #fff;
+  display: flex; align-items: center;
+  padding: 0 16px; height: 48px; flex-shrink: 0; gap: 16px; z-index: 10;
+}
+.header-brand { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; min-width: 200px; }
+.header-brand-icon {
+  width: 24px; height: 24px; background: rgba(255,255,255,0.2);
+  border-radius: 5px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.header-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.header-btn {
+  width: 36px; height: 36px; border: none; background: transparent;
+  border-radius: 6px; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 16px; color: rgba(255,255,255,0.85); transition: background 0.12s;
+}
+.header-btn:hover { background: rgba(255,255,255,0.15); }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin: 0 4px; }
+
+/* ── Body: sidebar + content ────────────────────────────── */
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar (matches TodoIQ) ───────────────────────────── */
+.sidebar {
+  width: 260px; min-width: 260px; background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; user-select: none; overflow-y: auto;
+}
+.nav-list { list-style: none; padding: 8px 10px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; border-radius: 6px; cursor: pointer;
+  transition: background 0.12s; position: relative;
+  text-decoration: none; color: inherit;
+}
+.nav-item:hover { background: var(--bg-hover); }
+.nav-item.active { background: var(--bg-selected); font-weight: 600; }
+.nav-item.active::before {
+  content: ''; position: absolute; left: 0; top: 25%; height: 50%;
+  width: 3px; border-radius: 2px; background: var(--accent);
+}
+.nav-icon { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+.nav-label { flex: 1; font-size: 13.5px; }
+.nav-count { font-size: 12px; color: var(--text-secondary); min-width: 16px; text-align: right; }
+.nav-divider { border: none; border-top: 1px solid var(--border); margin: 6px 18px; }
+
+/* ── Main Content ───────────────────────────────────────── */
+.main-content {
+  flex: 1; overflow-y: auto; padding: 0;
+}
+.main-content::-webkit-scrollbar { width: 5px; }
+.main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.content-header {
+  padding: 20px 28px 0;
+  display: flex; align-items: baseline; gap: 12px;
+}
+.content-title { font-size: 20px; font-weight: 600; }
+.content-date { font-size: 13px; color: var(--text-secondary); }
+
+.content-body {
+  padding: 16px 28px 40px;
+}
+
+/* ── Insight Cards ──────────────────────────────────────── */
+.insight-card {
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.insight-card.risk {
+  background: #fdf0ef;
+  border: 1px solid #f5c6c2;
+}
+.dark .insight-card.risk {
+  background: #2e1f1f;
+  border-color: #5a2a2a;
+}
+.insight-card.opportunity {
+  background: var(--ai-light);
+  border: 1px solid var(--ai-border);
+}
+.insight-card.prep {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+}
+.dark .insight-card.prep {
+  background: #2e2a18;
+  border-color: #5a4a18;
+}
+.insight-card.info {
+  background: var(--accent-light);
+  border: 1px solid #b8d4f0;
+}
+.dark .insight-card.info {
+  background: #1a2a3a;
+  border-color: #2a4a6a;
+}
+.insight-card.positive {
+  background: #f0f9f0;
+  border: 1px solid #c8e6c9;
+}
+.dark .insight-card.positive {
+  background: #1e2e1e;
+  border-color: #2a4a2a;
+}
+
+.insight-icon {
+  position: absolute;
+  top: 16px; right: 18px;
+  font-size: 18px;
+  opacity: 0.5;
+}
+
+.insight-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.insight-card.risk .insight-label { color: var(--danger); }
+.insight-card.opportunity .insight-label { color: var(--ai); }
+.insight-card.prep .insight-label { color: #e65100; }
+.insight-card.info .insight-label { color: var(--accent); }
+.insight-card.positive .insight-label { color: var(--success); }
+
+.insight-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  padding-right: 30px;
+}
+
+.insight-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.insight-body strong { color: var(--text); font-weight: 600; }
+
+.insight-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.insight-btn {
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.12s;
+}
+.insight-btn.primary { background: var(--accent); color: #fff; }
+.insight-btn.primary:hover { background: var(--accent-hover); }
+.insight-btn.ai { background: var(--ai); color: #fff; }
+.insight-btn.ai:hover { opacity: 0.85; }
+.insight-btn.secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.insight-btn.secondary:hover { background: var(--bg-hover); }
+
+.insight-tasks {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.dark .insight-tasks { border-top-color: rgba(255,255,255,0.06); }
+
+.insight-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.insight-task .it-id {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 32px;
+}
+.insight-task .it-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insight-task .it-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.priority-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.priority-dot.p1 { background: var(--danger); }
+.priority-dot.p2 { background: var(--warning); }
+.priority-dot.p3 { background: var(--accent); }
+
+/* ── Section Divider ────────────────────────────────────── */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+/* ── People Strip ───────────────────────────────────────── */
+.people-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+}
+.people-strip::-webkit-scrollbar { height: 3px; }
+.people-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.person-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-detail);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.person-chip:hover {
+  background: var(--bg-selected);
+  border-color: var(--accent);
+}
+.person-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 10px; color: #fff; flex-shrink: 0;
+}
+.person-chip-name { font-size: 12px; font-weight: 500; white-space: nowrap; }
+.person-chip-detail { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.person-chip .chip-badge {
+  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; white-space: nowrap;
+}
+.chip-badge.risk { background: #fce4ec; color: var(--danger); }
+.dark .chip-badge.risk { background: #3a1a1a; }
+.chip-badge.waiting { background: #fff3e0; color: #e65100; }
+.dark .chip-badge.waiting { background: #3e2a18; }
+
+/* ── Day Load Bar ───────────────────────────────────────── */
+.day-load {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.day-load-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.day-load-bar .bar-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.day-load-bar .bar-fill-container {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.day-load-bar .bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.bar-fill.light { background: var(--accent); opacity: 0.4; }
+.bar-fill.medium { background: var(--warning); opacity: 0.6; }
+.bar-fill.heavy { background: var(--danger); opacity: 0.7; }
+.day-load-bar .bar-hours {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.day-load-bar.today .bar-label { color: var(--accent); font-weight: 600; }
+
+/* ── Recommendation ─────────────────────────────────────── */
+.rec-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-style: italic;
+  padding: 8px 0;
+}
+.rec-text strong { font-style: normal; color: var(--text); }
+
+/* ── Initiative Columns ─────────────────────────────────── */
+.initiative-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.init-col {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+.init-col:hover { box-shadow: var(--shadow); }
+
+.init-col-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.init-col-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  padding-right: 60px;
+}
+.init-health {
+  position: absolute;
+  top: 14px; right: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.init-health.on-track { background: #e8f5e9; color: #2e7d32; }
+.dark .init-health.on-track { background: #1e3a1e; color: #66bb6a; }
+.init-health.at-risk { background: #fff3e0; color: #e65100; }
+.dark .init-health.at-risk { background: #3e2a18; color: #ffb74d; }
+.init-health.stale { background: #fce4ec; color: #c62828; }
+.dark .init-health.stale { background: #3a1a1a; color: #ef9a9a; }
+.init-health.blocked { background: #f3e5f5; color: #7b1fa2; }
+.dark .init-health.blocked { background: #2d1e3a; color: #ce93d8; }
+
+.init-col-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.init-col-meta .meta-item { display: flex; align-items: center; gap: 3px; }
+
+/* ── Initiative Section ─────────────────────────────────── */
+.init-section {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.dark .init-section { border-bottom-color: rgba(255,255,255,0.04); }
+.init-section:last-child { border-bottom: none; }
+
+.init-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* ── Task rows inside initiative ────────────────────────── */
+.init-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.init-task .it-id {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 28px;
+  flex-shrink: 0;
+}
+.init-task .it-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.init-task .it-status {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.it-status.active { background: var(--accent-light); color: var(--accent); }
+.it-status.waiting { background: #fff3e0; color: #e65100; }
+.dark .it-status.waiting { background: #3e2a18; }
+.it-status.in-progress { background: #e8f5e9; color: #2e7d32; }
+.dark .it-status.in-progress { background: #1e3a1e; }
+
+/* ── People inside initiative ───────────────────────────── */
+.init-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.init-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--bg-detail);
+  border: 1px solid var(--border);
+}
+.init-person-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.init-person-name { font-weight: 500; }
+.init-person-signal {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* ── Activity signals ───────────────────────────────────── */
+.init-activity {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.init-activity .signal {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 2px 0;
+}
+.init-activity .signal-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+/* ── CoS Insight ────────────────────────────────────────── */
+.init-cos {
+  padding: 10px 16px 14px;
+  background: var(--ai-light);
+  border-top: 1px solid var(--ai-border);
+}
+.init-cos-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ai);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.init-cos-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-style: italic;
+}
+.init-cos-text strong { font-style: normal; color: var(--text); }
+
+.init-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.init-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.12s;
+}
+.init-btn.primary { background: var(--accent); color: #fff; }
+.init-btn.primary:hover { background: var(--accent-hover); }
+.init-btn.ai { background: var(--ai); color: #fff; }
+.init-btn.ai:hover { opacity: 0.85; }
+.init-btn.secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.init-btn.secondary:hover { background: var(--bg-hover); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ Header ═══ -->
+<div class="header-bar">
+  <div class="header-brand">
+    <div class="header-brand-icon">✓</div>
+    TodoNess
+  </div>
+  <div class="header-actions">
+    <span class="conn-dot"></span>
+    <button class="header-btn" onclick="document.documentElement.classList.toggle('dark')" title="Toggle theme">◐</button>
+  </div>
+</div>
+
+<div class="app-body">
+
+<!-- ═══ Sidebar ═══ -->
+<div class="sidebar">
+  <ul class="nav-list">
+    <a class="nav-item" href="/todo">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.17 3.17l1.42 1.42M11.41 11.41l1.42 1.42M3.17 12.83l1.42-1.42M11.41 4.59l1.42-1.42" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
+      <span class="nav-label">My Day</span>
+    </a>
+    <a class="nav-item" href="/todo">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="1" width="10" height="14" rx="1.5"/><line x1="6" y1="5" x2="11" y2="5"/><line x1="6" y1="8" x2="11" y2="8"/><line x1="6" y1="11" x2="9" y2="11"/></svg></span>
+      <span class="nav-label">All Tasks</span>
+    </a>
+    <hr class="nav-divider">
+    <li class="nav-item active">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h12M2 8h12M2 12h8"/><circle cx="14" cy="12" r="1.5" fill="currentColor"/></svg></span>
+      <span class="nav-label">Briefing</span>
+    </li>
+    <hr class="nav-divider">
+    <a class="nav-item" href="/">
+      <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></span>
+      <span class="nav-label">Dashboard</span>
+    </a>
+  </ul>
+</div>
+
+<!-- ═══ Main ═══ -->
+<div class="main-content">
+  <div class="content-header">
+    <div class="content-title">Briefing</div>
+    <div class="content-date" id="briefing-date"></div>
+  </div>
+  <div class="content-body">
+
+    <!-- ════════════════════════════════════════════════
+         SECTION: WHAT NEEDS YOUR ATTENTION RIGHT NOW
+         ════════════════════════════════════════════════ -->
+    <div class="section-label">⚡ Needs your attention</div>
+
+    <!-- Insight: Overdue follow-up risk -->
+    <div class="insight-card risk">
+      <div class="insight-icon">⚠</div>
+      <div class="insight-label">Stale follow-ups</div>
+      <div class="insight-title">6 people have been waiting on you for over a week</div>
+      <div class="insight-body">
+        Your longest-open waiting items are with <strong>Rohini &amp; Nitasha</strong> (29 days — Agentic AI blog) and <strong>Greg Hurlman</strong> (24 days — Kunal follow-ups). These have crossed the point where the other person has likely moved on or assumed you've dropped it. A quick "still on my radar" message prevents relationship damage.
+      </div>
+      <div class="insight-tasks">
+        <div class="insight-task"><span class="priority-dot p3"></span><span class="it-id">#450</span><span class="it-title">Follow up with Rohini and Nitasha on Agentic AI blog progress</span><span class="it-meta">29d waiting</span></div>
+        <div class="insight-task"><span class="priority-dot p3"></span><span class="it-id">#488</span><span class="it-title">Follow up with Greg Hurlman on periodic follow-ups to Kunal</span><span class="it-meta">24d waiting</span></div>
+        <div class="insight-task"><span class="priority-dot p3"></span><span class="it-id">#513</span><span class="it-title">Follow up with John Wheat and Raj on Agent Exploration Kickstart</span><span class="it-meta">22d waiting</span></div>
+      </div>
+      <div class="insight-actions">
+        <button class="insight-btn ai">✦ Draft quick check-ins</button>
+        <button class="insight-btn secondary">View all 6 waiting →</button>
+      </div>
+    </div>
+
+    <!-- Insight: Unanswered inbound -->
+    <div class="insight-card risk">
+      <div class="insight-icon">📨</div>
+      <div class="insight-label">Unanswered</div>
+      <div class="insight-title">Lisa McKee and Pratap Ladhani are waiting on a reply from you</div>
+      <div class="insight-body">
+        Lisa messaged about <strong>Frontier Maturity Model framing</strong> 6 days ago — no response. Pratap is waiting on <strong>interview framing questions</strong> for 6 days. Both are time-sensitive: Lisa needs availability confirmation and Pratap has interviews coming up.
+      </div>
+      <div class="insight-actions">
+        <button class="insight-btn primary">Respond to Lisa</button>
+        <button class="insight-btn secondary">Respond to Pratap</button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         SECTION: PREPARING FOR TODAY
+         ════════════════════════════════════════════════ -->
+    <div class="section-label">📋 Preparing for today</div>
+
+    <!-- Insight: Today's meeting load + prep gaps -->
+    <div class="insight-card prep">
+      <div class="insight-icon">📅</div>
+      <div class="insight-label">Today's calendar</div>
+      <div class="insight-title">5.5 hours of meetings — 1 has no agenda and 2 connect to open tasks</div>
+      <div class="insight-body">
+        You're seeing <strong>Saurabh Pant</strong> at 9:00 — you have 3 open tasks with him including setting up the adoption patterns review. The <strong>ZT4AI Workshop</strong> at 3:00 with Steve Jeffery has no agenda posted; consider asking Steve what he needs ahead of time. Your <strong>Agent Ecosystems</strong> presentation is due April 23 — today's working session is a chance to make progress.
+      </div>
+      <div class="insight-tasks">
+        <div class="insight-task"><span class="priority-dot p2"></span><span class="it-id">#812</span><span class="it-title">Set up meeting with Saurabh to review adoption patterns</span><span class="it-meta">9:00 mtg</span></div>
+        <div class="insight-task"><span class="priority-dot p2"></span><span class="it-id">#823</span><span class="it-title">Review ZT4AI workshop as governance workstream</span><span class="it-meta">3:00 mtg · no agenda</span></div>
+        <div class="insight-task"><span class="priority-dot p2"></span><span class="it-id">#656</span><span class="it-title">Prepare for Agent Ecosystems Presentation on April 23</span><span class="it-meta">due in 7d</span></div>
+      </div>
+      <div class="insight-actions">
+        <button class="insight-btn ai">✦ Build prep notes for Saurabh 1:1</button>
+        <button class="insight-btn secondary">Ask Steve for agenda</button>
+      </div>
+    </div>
+
+    <!-- Insight: Week load with recommendation -->
+    <div class="insight-card info">
+      <div class="insight-icon">📊</div>
+      <div class="insight-label">Week ahead</div>
+      <div class="insight-title">Thursday is your heaviest day — protect Friday for the presentation deadline</div>
+      <div class="day-load">
+        <div class="day-load-bar today">
+          <div class="bar-label">Wed</div>
+          <div class="bar-fill-container"><div class="bar-fill heavy" style="width:69%"></div></div>
+          <div class="bar-hours">5.5h</div>
+        </div>
+        <div class="day-load-bar">
+          <div class="bar-label">Thu</div>
+          <div class="bar-fill-container"><div class="bar-fill heavy" style="width:75%"></div></div>
+          <div class="bar-hours">6.0h</div>
+        </div>
+        <div class="day-load-bar">
+          <div class="bar-label">Fri</div>
+          <div class="bar-fill-container"><div class="bar-fill medium" style="width:44%"></div></div>
+          <div class="bar-hours">3.5h</div>
+        </div>
+        <div class="day-load-bar">
+          <div class="bar-label">Mon</div>
+          <div class="bar-fill-container"><div class="bar-fill medium" style="width:50%"></div></div>
+          <div class="bar-hours">4.0h</div>
+        </div>
+        <div class="day-load-bar">
+          <div class="bar-label">Tue</div>
+          <div class="bar-fill-container"><div class="bar-fill light" style="width:31%"></div></div>
+          <div class="bar-hours">2.5h</div>
+        </div>
+      </div>
+      <div class="rec-text">
+        <strong>Recommendation:</strong> Thursday has 6 hours of meetings leaving almost no working time. Your Agent Ecosystems presentation (#656) is due April 23 — Friday afternoon has the most open space this week. Consider blocking 2 hours Friday PM for focused prep.
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         SECTION: RELATIONSHIPS AT RISK
+         ════════════════════════════════════════════════ -->
+    <div class="section-label">🤝 People to prioritize</div>
+
+    <div class="people-strip">
+      <div class="person-chip">
+        <div class="person-avatar" style="background:#e65100">GH</div>
+        <div>
+          <div class="person-chip-name">Greg Hurlman</div>
+          <div class="person-chip-detail">5 tasks · 3 waiting</div>
+        </div>
+        <span class="chip-badge waiting">3 stale</span>
+      </div>
+      <div class="person-chip">
+        <div class="person-avatar" style="background:#2564cf">JW</div>
+        <div>
+          <div class="person-chip-name">John Wheat</div>
+          <div class="person-chip-detail">Mtg 1:00 PM · 2 open</div>
+        </div>
+      </div>
+      <div class="person-chip">
+        <div class="person-avatar" style="background:#8b5cf6">SP</div>
+        <div>
+          <div class="person-chip-name">Saurabh Pant</div>
+          <div class="person-chip-detail">Mtg 9:00 AM · 3 open</div>
+        </div>
+      </div>
+      <div class="person-chip">
+        <div class="person-avatar" style="background:#d13438">LM</div>
+        <div>
+          <div class="person-chip-name">Lisa McKee</div>
+          <div class="person-chip-detail">Last contact: 6 days ago</div>
+        </div>
+        <span class="chip-badge risk">Unanswered</span>
+      </div>
+      <div class="person-chip">
+        <div class="person-avatar" style="background:#107c10">AM</div>
+        <div>
+          <div class="person-chip-name">Adrian Maclean</div>
+          <div class="person-chip-detail">2 tasks · 1 waiting</div>
+        </div>
+      </div>
+      <div class="person-chip">
+        <div class="person-avatar" style="background:#f7630c">AK</div>
+        <div>
+          <div class="person-chip-name">Aamer Kaleem</div>
+          <div class="person-chip-detail">4 tasks · mtg 11:30</div>
+        </div>
+      </div>
+      <div class="person-chip">
+        <div class="person-avatar" style="background:#616161">PL</div>
+        <div>
+          <div class="person-chip-name">Pratap Ladhani</div>
+          <div class="person-chip-detail">Waiting 6 days</div>
+        </div>
+        <span class="chip-badge risk">Unanswered</span>
+      </div>
+    </div>
+
+    <!-- Insight: Greg Hurlman pattern -->
+    <div class="insight-card opportunity">
+      <div class="insight-icon">✦</div>
+      <div class="insight-label">Relationship insight</div>
+      <div class="insight-title">Greg Hurlman has 3 stale threads — consider a single catch-up instead of 3 separate follow-ups</div>
+      <div class="insight-body">
+        You're waiting on Greg for: <strong>Kunal follow-ups</strong> (24d), <strong>Spark Tank rollout</strong> (21d), and <strong>TPID reporting demo</strong> (recent). Instead of sending 3 messages, a 15-minute call would clear all three and be less awkward than a chain of "just checking in" pings.
+      </div>
+      <div class="insight-actions">
+        <button class="insight-btn ai">✦ Find time for Greg catch-up</button>
+        <button class="insight-btn secondary">Draft consolidated message</button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         SECTION: INITIATIVE OVERVIEW
+         ════════════════════════════════════════════════ -->
+    <div class="section-label">🎯 Initiative overview</div>
+
+    <div class="initiative-grid">
+
+      <!-- ── Column: Adoption Patterns & Metrics ── -->
+      <div class="init-col">
+        <div class="init-col-header">
+          <div class="init-col-name">Adoption Patterns &amp; Metrics</div>
+          <span class="init-health at-risk">At Risk</span>
+          <div class="init-col-meta">
+            <span class="meta-item">📋 6 tasks</span>
+            <span class="meta-item">⏳ 2 waiting</span>
+            <span class="meta-item">👥 6 people</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Tasks</div>
+          <div class="init-task">
+            <span class="it-id">#812</span>
+            <span class="it-title">Set up meeting with Saurabh Pant to review adoption patterns</span>
+            <span class="it-status active">P2 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#814</span>
+            <span class="it-title">Get status on telemetry-driven adoption patterns initiative</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#837</span>
+            <span class="it-title">Set up Adoption Pattern call with Jackie Bell</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#797</span>
+            <span class="it-title">Follow up with Lisa McKee on A365 customer low friction path</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#811</span>
+            <span class="it-title">Follow up with Lisa McKee on connecting Power Up stories into CAPE</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#813</span>
+            <span class="it-title">Connect with PLG team via Freada Sylvester</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Key People</div>
+          <div class="init-people">
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#e65100"></span>
+              <span class="init-person-name">Saurabh Pant</span>
+              <span class="init-person-signal">OOO Apr 21</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Manuela Pichler</span>
+              <span class="init-person-signal">in meeting</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#2e7d32"></span>
+              <span class="init-person-name">Aamer Kaleem</span>
+              <span class="init-person-signal">available</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Jackie Bell</span>
+              <span class="init-person-signal">recurring mtg</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#2e7d32"></span>
+              <span class="init-person-name">Lisa McKee</span>
+              <span class="init-person-signal">replied</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#e65100"></span>
+              <span class="init-person-name">Freada Sylvester</span>
+              <span class="init-person-signal">OOO Apr 21</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Recent Activity</div>
+          <div class="init-activity">
+            <div class="signal"><span class="signal-icon">📩</span> Lisa McKee replied on Power Up stories thread (#811)</div>
+            <div class="signal"><span class="signal-icon">🏖️</span> Saurabh Pant OOO until Apr 21 — blocks #812 scheduling</div>
+            <div class="signal"><span class="signal-icon">🏖️</span> Freada Sylvester OOO until Apr 21 — blocks #813 PLG intro</div>
+            <div class="signal"><span class="signal-icon">📅</span> CAPE Adoption Patterns recurring meeting — Jackie Bell</div>
+            <div class="signal"><span class="signal-icon">📅</span> CAPE A365 XLT SteerCo — Lisa McKee context</div>
+          </div>
+        </div>
+
+        <div class="init-cos">
+          <div class="init-cos-label">✦ Chief of Staff</div>
+          <div class="init-cos-text">
+            This initiative has the <strong>most open threads</strong> and the most people waiting. Saurabh is OOO until Apr 21 and Freada until Apr 21. Risk of things slipping with so many parallel threads across different people. Consider whether <strong>Aamer could own more of the coordination</strong> — he's already tracking telemetry patterns and has context across 4 other tasks.
+          </div>
+          <div class="init-actions">
+            <button class="init-btn ai">✦ Schedule meeting with Saurabh</button>
+            <button class="init-btn primary">Review Lisa's reply</button>
+            <button class="init-btn secondary">Delegate to Aamer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Column: Agent Ecosystems & Scale Programs ── -->
+      <div class="init-col">
+        <div class="init-col-header">
+          <div class="init-col-name">Agent Ecosystems &amp; Scale Programs</div>
+          <span class="init-health on-track">On Track</span>
+          <div class="init-col-meta">
+            <span class="meta-item">📋 5 tasks</span>
+            <span class="meta-item">⏳ 2 waiting</span>
+            <span class="meta-item">👥 4 people</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Tasks</div>
+          <div class="init-task">
+            <span class="it-id">#656</span>
+            <span class="it-title">Prepare for Agent Ecosystems Presentation on April 23</span>
+            <span class="it-status active">P2 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#823</span>
+            <span class="it-title">Review ZT4AI workshop as governance workshop</span>
+            <span class="it-status active">P2 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#513</span>
+            <span class="it-title">Follow up with John Wheat and Raj on Agent Excellence Kickstart</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#526</span>
+            <span class="it-title">Sync with John Wheat and Raj on FDE and Kickstarter programs</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#942</span>
+            <span class="it-title">Explore MCP servers for one-click execute in TodoIQ</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Key People</div>
+          <div class="init-people">
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Tarek Dawoud</span>
+              <span class="init-person-signal">pending</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Pratap Ladhani</span>
+              <span class="init-person-signal">pending</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#2e7d32"></span>
+              <span class="init-person-name">John Wheat</span>
+              <span class="init-person-signal">replied ×2</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Raj Gopalakrishnan</span>
+              <span class="init-person-signal">in thread</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Recent Activity</div>
+          <div class="init-activity">
+            <div class="signal"><span class="signal-icon">📩</span> John Wheat replied on both #513 and #526 — threads unblocked</div>
+            <div class="signal"><span class="signal-icon">📅</span> Agent Ecosystems Presentation deadline: <strong>Apr 23</strong> (7 days)</div>
+            <div class="signal"><span class="signal-icon">⚠️</span> ZT4AI workshop with Tarek has stalled — no response</div>
+            <div class="signal"><span class="signal-icon">🔧</span> MCP server exploration (#942) is self-directed, no blockers</div>
+          </div>
+        </div>
+
+        <div class="init-cos">
+          <div class="init-cos-label">✦ Chief of Staff</div>
+          <div class="init-cos-text">
+            Presentation due <strong>April 23 — you have 7 days</strong>. John Wheat has responded on both #513 and #526, which means those threads are unblocked. The ZT4AI workshop with Tarek has stalled — consider whether you still need to provide input or if <strong>Pratap can handle it</strong>.
+          </div>
+          <div class="init-actions">
+            <button class="init-btn ai">✦ Prepare presentation</button>
+            <button class="init-btn primary">Read John's replies</button>
+            <button class="init-btn secondary">Ping Tarek</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Column: Content & Storytelling ── -->
+      <div class="init-col">
+        <div class="init-col-header">
+          <div class="init-col-name">Content &amp; Storytelling</div>
+          <span class="init-health stale">Stale</span>
+          <div class="init-col-meta">
+            <span class="meta-item">📋 5 tasks</span>
+            <span class="meta-item">⏳ 1 waiting</span>
+            <span class="meta-item">👥 5 people</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Tasks</div>
+          <div class="init-task">
+            <span class="it-id">#451</span>
+            <span class="it-title">Collaborate on maturity-model blog series</span>
+            <span class="it-status active">P2 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#781</span>
+            <span class="it-title">Create CAT Live video production schedule for Mehdi</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#450</span>
+            <span class="it-title">Follow up with Rohini and Nitasha on Agentic AI blog progress</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#1052</span>
+            <span class="it-title">Review Ramakrishnan Raman's demo video</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#1074</span>
+            <span class="it-title">Review Steve's presentation</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Key People</div>
+          <div class="init-people">
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#e65100"></span>
+              <span class="init-person-name">Manuela Pichler</span>
+              <span class="init-person-signal">OOO</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Mehdi Slaoui Andaloussi</span>
+              <span class="init-person-signal">can self-serve</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#c62828"></span>
+              <span class="init-person-name">Rohini Chandrashekhar</span>
+              <span class="init-person-signal">29d silent</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#c62828"></span>
+              <span class="init-person-name">Nitasha Rao</span>
+              <span class="init-person-signal">29d silent</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Ramakrishnan Raman</span>
+              <span class="init-person-signal">async review</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Recent Activity</div>
+          <div class="init-activity">
+            <div class="signal"><span class="signal-icon">🔴</span> Agentic AI blog (#450) — <strong>29 days</strong> with no activity from Rohini or Nitasha</div>
+            <div class="signal"><span class="signal-icon">🏖️</span> Manuela OOO — maturity-model blog (#451) blocked</div>
+            <div class="signal"><span class="signal-icon">💡</span> Mehdi has context to own CAT Live schedule himself</div>
+            <div class="signal"><span class="signal-icon">⚡</span> Reviews #1052 and #1074 are async quick hits — ~30 min total</div>
+          </div>
+        </div>
+
+        <div class="init-cos">
+          <div class="init-cos-label">✦ Chief of Staff</div>
+          <div class="init-cos-text">
+            The Agentic AI blog (<strong>#450</strong>) has gone 29 days with no activity — Rohini and Nitasha may have moved on. The maturity-model blog is blocked by Manuela being OOO. <strong>Mehdi has the context to own the CAT Live schedule himself.</strong> The two reviews (#1052, #1074) are async quick hits that could be knocked out in 30 minutes.
+          </div>
+          <div class="init-actions">
+            <button class="init-btn ai">✦ Draft nudge to Rohini &amp; Nitasha</button>
+            <button class="init-btn primary">Knock out reviews</button>
+            <button class="init-btn secondary">Delegate to Mehdi</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Column: People & Partnerships ── -->
+      <div class="init-col">
+        <div class="init-col-header">
+          <div class="init-col-name">People &amp; Partnerships</div>
+          <span class="init-health at-risk">Mixed</span>
+          <div class="init-col-meta">
+            <span class="meta-item">📋 6 tasks</span>
+            <span class="meta-item">⏳ 6 waiting</span>
+            <span class="meta-item">👥 5 people</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Tasks</div>
+          <div class="init-task">
+            <span class="it-id">#698</span>
+            <span class="it-title">Reach out to CSU contact from Natasha Chopra's team</span>
+            <span class="it-status waiting">P2 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#488</span>
+            <span class="it-title">Follow up with Greg Hurlman on periodic follow-ups to Kunal</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#517</span>
+            <span class="it-title">Discuss Spark Tank rollout strategy with Greg Hurlman</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#819</span>
+            <span class="it-title">Provide TPID reporting demo for Amar meeting</span>
+            <span class="it-status waiting">P2 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#666</span>
+            <span class="it-title">Get Adrian Maclean's thoughts on guidance role</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#809</span>
+            <span class="it-title">Follow up with Pratap Ladhani on interview framing</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Key People</div>
+          <div class="init-people">
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#2e7d32"></span>
+              <span class="init-person-name">Greg Hurlman</span>
+              <span class="init-person-signal">replied ×3</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#2e7d32"></span>
+              <span class="init-person-name">Aamer Kaleem</span>
+              <span class="init-person-signal">replied</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#2e7d32"></span>
+              <span class="init-person-name">Adrian Maclean</span>
+              <span class="init-person-signal">replied</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#e65100"></span>
+              <span class="init-person-name">Pratap Ladhani</span>
+              <span class="init-person-signal">6d silent</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#1976d2"></span>
+              <span class="init-person-name">Kunal</span>
+              <span class="init-person-signal">downstream</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Recent Activity</div>
+          <div class="init-activity">
+            <div class="signal"><span class="signal-icon">📩</span> Greg replied on <strong>3 threads</strong> (#488, #517, #819) — all unblocked</div>
+            <div class="signal"><span class="signal-icon">📩</span> Aamer replied on CSU contact (#698) — thread unblocked</div>
+            <div class="signal"><span class="signal-icon">📩</span> Adrian replied on guidance role (#666) — ready to act</div>
+            <div class="signal"><span class="signal-icon">⚠️</span> Pratap silent for 6 days on interview framing (#809)</div>
+          </div>
+        </div>
+
+        <div class="init-cos">
+          <div class="init-cos-label">✦ Chief of Staff</div>
+          <div class="init-cos-text">
+            Greg has responded on 3 threads (#488, #517, #819) — <strong>a single catch-up call would clear all three</strong> instead of separate follow-ups. Adrian has replied on the guidance role — that thread is unblocked, act on it. Pratap has gone silent on interview framing for 6 days.
+          </div>
+          <div class="init-actions">
+            <button class="init-btn ai">✦ Schedule Greg catch-up</button>
+            <button class="init-btn primary">Act on Adrian's reply</button>
+            <button class="init-btn secondary">Ping Pratap</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Column: Team Development ── -->
+      <div class="init-col">
+        <div class="init-col-header">
+          <div class="init-col-name">Team Development</div>
+          <span class="init-health blocked">Quiet</span>
+          <div class="init-col-meta">
+            <span class="meta-item">📋 4 tasks</span>
+            <span class="meta-item">⏳ 1 waiting</span>
+            <span class="meta-item">👥 3 people</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Tasks</div>
+          <div class="init-task">
+            <span class="it-id">#145</span>
+            <span class="it-title">Create career template combining people slide and connections</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#829</span>
+            <span class="it-title">Schedule career discussion call with Saurabh Pant</span>
+            <span class="it-status active">P3 Active</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#131</span>
+            <span class="it-title">Identify CAPE support resource for guidance operational work</span>
+            <span class="it-status waiting">P3 Waiting</span>
+          </div>
+          <div class="init-task">
+            <span class="it-id">#663</span>
+            <span class="it-title">Draft CAPE guidance helper role description for Aamer Kaleem</span>
+            <span class="it-status active">P2 Active</span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Key People</div>
+          <div class="init-people">
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#e65100"></span>
+              <span class="init-person-name">Saurabh Pant</span>
+              <span class="init-person-signal">OOO Apr 21</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#2e7d32"></span>
+              <span class="init-person-name">Aamer Kaleem</span>
+              <span class="init-person-signal">available</span>
+            </span>
+            <span class="init-person">
+              <span class="init-person-dot" style="background:#e65100"></span>
+              <span class="init-person-name">Manuela Pichler</span>
+              <span class="init-person-signal">OOO Apr 21</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="init-section">
+          <div class="init-section-label">Recent Activity</div>
+          <div class="init-activity">
+            <div class="signal"><span class="signal-icon">🏖️</span> Saurabh OOO until Apr 21 — blocks career call scheduling (#829)</div>
+            <div class="signal"><span class="signal-icon">🏖️</span> Manuela OOO until Apr 21 — blocks role description review (#663)</div>
+            <div class="signal"><span class="signal-icon">📝</span> Career template (#145) has no external dependencies — can work now</div>
+            <div class="signal"><span class="signal-icon">📝</span> Role description draft (#663) can be finalized offline for review</div>
+          </div>
+        </div>
+
+        <div class="init-cos">
+          <div class="init-cos-label">✦ Chief of Staff</div>
+          <div class="init-cos-text">
+            Both Saurabh and Manuela are <strong>OOO until Apr 21</strong>, which blocks the two most time-sensitive items here. Use this window to finalize the <strong>career template (#145)</strong> and the <strong>role description draft (#663)</strong> so they're ready for review when people return.
+          </div>
+          <div class="init-actions">
+            <button class="init-btn primary">Work on career template</button>
+            <button class="init-btn primary">Draft role description</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /initiative-grid -->
+
+  </div><!-- /content-body -->
+</div><!-- /main-content -->
+
+</div><!-- /app-body -->
+</div><!-- /app -->
+
+<script>
+(function() {
+  var now = new Date();
+  document.getElementById('briefing-date').textContent =
+    now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+})();
+
+/* ══════════════════════════════════════════════════════════
+   Mock data contract — these functions define what the
+   live adapter would need to populate this page.
+   ══════════════════════════════════════════════════════════
+
+   Data sources required:
+   1. GET /api/tasks — all active/waiting/suggested tasks
+   2. GET /api/stats — counts by status
+   3. WorkIQ: "What meetings do I have today/this week?"
+   4. WorkIQ: "Which meetings have no agenda?"
+   5. WorkIQ: "What are unanswered messages directed at me?"
+   6. WorkIQ: "Summarize recent interactions with {person}" (per key person)
+   7. WorkIQ: "What's my meeting load for the next 5 business days?"
+
+   Insight generation logic (would run server-side or in adapter):
+   - Stale follow-ups: waiting tasks sorted by age, grouped by person
+   - Meeting prep: cross-reference today's calendar attendees with key_people
+   - Relationship radar: key_people frequency + last interaction from WorkIQ
+   - Workstream clustering: group tasks by shared key_people or topic keywords
+   - Delegation: tasks where key_people appear in many other tasks (high context)
+   - Suggestion pressure: count by priority, flag P1/P2 needing triage
+*/
+</script>
+</body>
+</html>
