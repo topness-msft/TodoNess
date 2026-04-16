@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 VALID_TRANSITIONS = {
     "suggested": {"active", "waiting", "snoozed", "dismissed", "deleted"},
     "active": {"in_progress", "waiting", "snoozed", "completed", "dismissed", "deleted"},
-    "in_progress": {"active", "waiting", "snoozed", "completed", "deleted"},
-    "waiting": {"active", "in_progress", "snoozed", "completed", "deleted"},
+    "in_progress": {"active", "waiting", "snoozed", "completed", "dismissed", "deleted"},
+    "waiting": {"active", "in_progress", "snoozed", "completed", "dismissed", "deleted"},
     "snoozed": {"active", "completed", "dismissed", "deleted"},
     "completed": {"active", "deleted"},
     "dismissed": {"active", "suggested", "deleted"},
