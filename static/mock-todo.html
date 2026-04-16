@@ -292,7 +292,7 @@ body {
 }
 .detail-close:hover { background: var(--bg-hover); }
 
-.detail-description { padding: 8px 20px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.detail-description { padding: 8px 20px 8px 52px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
 
 .detail-rows { padding: 4px 0; }
 .detail-row {
@@ -339,7 +339,7 @@ body {
 }
 
 /* Suggestion actions */
-.detail-actions { padding: 10px 20px; display: flex; gap: 8px; }
+.detail-actions { padding: 10px 20px 10px 52px; display: flex; gap: 8px; }
 .btn {
   padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
   font-family: inherit; cursor: pointer; border: 1px solid transparent; transition: all 0.12s;
@@ -537,7 +537,7 @@ body {
 /* ── Inline Edit (title/description) ──────────────────── */
 .detail-title { cursor: pointer; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 .detail-title:hover { background: var(--bg-hover); }
-.detail-description { outline: none; border-radius: 4px; padding: 4px 6px; margin: -4px -6px; min-height: 40px; cursor: pointer; }
+.detail-description { outline: none; border-radius: 4px; padding: 4px 6px; margin: -4px -6px; margin-left: 32px; min-height: 40px; cursor: pointer; }
 .detail-description:hover { background: var(--bg-hover); }
 
 /* ── Priority Selector ───────────────────────────────── */
@@ -1402,6 +1402,10 @@ function selectTask(id) {
     <span class="row-icon" style="color:${priColors[pri]}">⚑</span>
     <span class="row-label" style="color:${priColors[pri]}">${priLabels[pri]||'Normal'}</span>${resPill}</div>`;
 
+  // Resolved rationale (shown when suggestion-check found resolution)
+  const resolvedRationale = (t._wa_status === 'likely_resolved' || t._wa_status === 'still_pending' || t._wa_status === 'unclear') && t._wa_summary
+    ? `<div style="padding:6px 20px 6px 52px;font-size:12px;line-height:1.4;color:var(--text-secondary);font-style:italic">${esc(t._wa_summary)}</div>` : '';
+
   // Snooze as a detail row (like "Remind me" in To Do)
   const snoozeRow = !isSug && !isDone && t.status!=='snoozed'
     ? `<div class="detail-row" onclick="event.stopPropagation();showSnoozePicker(event,${t.id})" style="cursor:pointer">
@@ -1415,6 +1419,7 @@ function selectTask(id) {
       ${parseBadge}
       <button class="detail-close" onclick="closeDetail()">✕</button></div>
     ${priRow}
+    ${resolvedRationale}
     <div class="detail-description" onclick="editDescription(${t.id},this)">${esc(t.description||'')}</div>
     ${sugActions}
     <hr class="detail-sep">
