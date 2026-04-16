@@ -274,6 +274,16 @@ CREATE TABLE IF NOT EXISTS sync_log (
     synced_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
+CREATE TABLE IF NOT EXISTS briefing_cache (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),
+    status          TEXT NOT NULL DEFAULT 'idle'
+                        CHECK (status IN ('idle','running','ready','error')),
+    content         TEXT,
+    generated_at    TEXT,
+    refresh_started_at TEXT,
+    error_message   TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_parse_status ON tasks(parse_status);
 CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);

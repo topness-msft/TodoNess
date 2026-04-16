@@ -14,6 +14,7 @@ from pathlib import Path
 from .db import init_db, get_connection
 from .handlers.dashboard import DashboardHandler
 from .handlers.todoiq import TodoIQHandler
+from .handlers.briefing import BriefingPageHandler, BriefingAPIHandler, BriefingRefreshHandler
 from .handlers.task_api import TaskListHandler, TaskDetailHandler, StatsHandler
 from .handlers.task_actions import TaskActionHandler, TaskRefreshHandler, TaskSkillHandler
 from .handlers.ws import TaskWebSocketHandler, broadcast
@@ -34,6 +35,7 @@ WAITING_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000  # 4 hours
 SUGGESTION_CHECK_INTERVAL_MS = 3 * 60 * 60 * 1000  # 3 hours
 BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000  # 6 hours
 BACKUP_KEEP_DAYS = 7
+BRIEFING_CHECK_INTERVAL_MS = 60 * 60 * 1000  # 1 hour — check if briefing is stale
 
 
 def _periodic_sync():
@@ -96,6 +98,60 @@ def _backup_db():
         logger.error(f"DB backup failed: {e}")
 
 
+BRIEFING_TIMEOUT = 600  # 10 min — WorkIQ + narrative generation
+
+
+def _check_briefing_stale():
+    """Called hourly. If briefing is stale and not already refreshing, trigger generation.
+
+    Only runs between 4-6 AM local time for the daily refresh, OR on any hour
+    if no briefing has ever been generated.
+    """
+    from .services.briefing import get_cached_briefing, is_stale, mark_refresh_started
+
+    cached = get_cached_briefing()
+
+    # If a refresh is already running, skip
+    if cached and cached["status"] == "running":
+        logger.debug("Briefing check: refresh already running")
+        return
+
+    # Determine if we should refresh
+    should_refresh = False
+    if not cached or not cached["content"]:
+        # Never generated — refresh immediately
+        should_refresh = True
+        logger.info("Briefing check: no briefing exists, triggering generation")
+    elif cached["is_stale"]:
+        # Stale — only auto-refresh during the 4-6 AM window
+        from datetime import datetime
+        hour = datetime.now().hour
+        if 4 <= hour <= 6:
+            should_refresh = True
+            logger.info("Briefing check: stale, within refresh window (4-6 AM)")
+        else:
+            logger.debug(f"Briefing check: stale but outside refresh window (hour={hour})")
+
+    if should_refresh:
+        mark_refresh_started()
+        result = run_copilot("/briefing-generate", label="briefing", timeout=BRIEFING_TIMEOUT)
+        logger.info(f"Briefing refresh: {result['message']}")
+
+
+def _startup_briefing_check():
+    """On startup, check if briefing is stale and trigger refresh if so."""
+    from .services.briefing import get_cached_briefing, mark_refresh_started
+
+    cached = get_cached_briefing()
+    if not cached or not cached["content"] or cached["is_stale"]:
+        logger.info("Startup: briefing is stale or missing, scheduling background refresh")
+        mark_refresh_started()
+        result = run_copilot("/briefing-generate", label="briefing", timeout=BRIEFING_TIMEOUT)
+        logger.info(f"Startup briefing refresh: {result['message']}")
+    else:
+        logger.info("Startup: briefing is fresh, skipping refresh")
+
+
 PARSE_BASE_TIMEOUT = 300  # 5 min base
 PARSE_PER_TASK_TIMEOUT = 180  # +3 min per task
 
@@ -144,6 +200,7 @@ def make_app() -> tornado.web.Application:
             # Dashboard
             (r"/", DashboardHandler),
             (r"/todo", TodoIQHandler),
+            (r"/briefing", BriefingPageHandler),
             # REST API
             (r"/api/tasks", TaskListHandler),
             (r"/api/tasks/(\d+)", TaskDetailHandler),
@@ -153,6 +210,8 @@ def make_app() -> tornado.web.Application:
             (r"/api/stats", StatsHandler),
             (r"/api/sync-status", SyncStatusHandler),
             (r"/api/runner-status", RunnerStatusHandler),
+            (r"/api/briefing", BriefingAPIHandler),
+            (r"/api/briefing/refresh", BriefingRefreshHandler),
             # WebSocket
             (r"/ws", TaskWebSocketHandler),
         ],
@@ -252,6 +311,16 @@ def start_server(port=8766):
     backup_callback.start()
     _backup_db()  # Run once at startup
     logger.info("DB backup enabled (every 6 hr, keep 7 days)")
+
+    # Briefing staleness check every hour
+    briefing_callback = tornado.ioloop.PeriodicCallback(
+        _check_briefing_stale, BRIEFING_CHECK_INTERVAL_MS
+    )
+    briefing_callback.start()
+    logger.info("Briefing staleness checker enabled (every 1 hr, refreshes 4-6 AM)")
+
+    # Check if briefing needs immediate refresh on startup
+    tornado.ioloop.IOLoop.current().call_later(10, _startup_briefing_check)
 
     return app, tornado.ioloop.IOLoop.current()
 
