@@ -173,6 +173,7 @@ def create_task(
     key_people: str | None = None,
     related_meeting: str | None = None,
     user_notes: str = "",
+    source_date: str | None = None,
 ) -> dict:
     """Create a new task and return it as a dict."""
     conn = get_connection()
@@ -195,19 +196,32 @@ def create_task(
                 )
                 return fuzzy_match
 
+        # Staleness guard: downgrade old suggestions to P5
+        if status == "suggested" and source_date and source_type != "email":
+            try:
+                sd = datetime.strptime(source_date, "%Y-%m-%d")
+                age_days = (datetime.utcnow() - sd).days
+                if age_days > 14:
+                    orig_priority = priority
+                    priority = 5
+                    note = f"[Auto-downgraded from P{orig_priority} — source is {age_days} days old] "
+                    coaching_text = note + (coaching_text or "")
+            except (ValueError, TypeError):
+                pass  # malformed date, skip guard
+
         now = _now()
         cursor = conn.execute(
             """INSERT INTO tasks
                (title, description, status, parse_status, raw_input, priority,
                 due_date, committed_date, source_type, source_id, source_url,
-                source_snippet, coaching_text, action_type, skill_output, key_people,
-                related_meeting, user_notes, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                source_date, source_snippet, coaching_text, action_type, skill_output,
+                key_people, related_meeting, user_notes, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 title, description, status, parse_status, raw_input, priority,
                 due_date, committed_date, source_type, source_id, source_url,
-                source_snippet, coaching_text, action_type, skill_output, key_people,
-                related_meeting, user_notes, now, now,
+                source_date, source_snippet, coaching_text, action_type, skill_output,
+                key_people, related_meeting, user_notes, now, now,
             ),
         )
         task_id = cursor.lastrowid
