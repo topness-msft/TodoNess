@@ -683,8 +683,13 @@ function renderDetailPane(task) {
     // Header card with inline actions
     var html = '<div class="detail-card">'
         + '<div class="detail-header-row">'
+        + '<div class="detail-title-group">'
         + '<h2 id="title-display-' + task.id + '">' + escapeHtml(task.title) + '</h2>'
         + '<button class="btn-edit-inline" onclick="toggleTitleEdit(' + task.id + ')" title="Edit title">&#9998;</button>'
+        + (task.raw_input && task.raw_input !== task.title
+            ? '<span class="raw-input-hint" data-tooltip="' + escapeHtml(task.raw_input).replace(/"/g, '&quot;') + '">&#128172;</span>'
+            : '')
+        + '</div>'
         + getHeaderActions(task)
         + '</div>'
         + '<input type="text" id="title-edit-' + task.id + '" class="title-edit-input" style="display:none" '
